@@ -1,39 +1,55 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-const navigation = [
-  ['servicios', 'Servicios'],
-  ['proceso', 'Proceso'],
-  ['proyectos', 'Proyectos'],
-  ['empresa', 'Empresa'],
-]
-
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
 
+  const closeMenu = () => setMenuOpen(false)
+
   return (
-    <header className="site-header">
+    <header className="site-header" role="banner">
       <div className="container header-inner">
-        <Link className="brand" to="/" aria-label="Construcciones Salma SPA, inicio">
-          <img src="/images/salma-logo.jpeg" width="168" height="60" alt="Construcciones Salma SPA" />
+        <Link className="brand" to="/" aria-label="CSALMA — Inicio">
+          <img
+            src="/images/logo.webp"
+            alt="CSALMA"
+            style={{ height: '36px', width: 'auto', objectFit: 'contain' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+          <span className="brand-logo">CSA<span>LMA</span></span>
         </Link>
+
+        <nav
+          className={`site-nav${menuOpen ? ' open' : ''}`}
+          aria-label="Navegación principal"
+        >
+          <a href="#servicios" onClick={closeMenu}>Servicios</a>
+          <a href="#obras" onClick={closeMenu}>Obras</a>
+          <a href="#garantias" onClick={closeMenu}>Garantías</a>
+          <a href="#contacto" onClick={closeMenu}>Contacto</a>
+          <a
+            href="https://wa.me/56912345678?text=Hola,%20me%20interesa%20solicitar%20una%20cotizaci%C3%B3n"
+            className="nav-cta"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={closeMenu}
+          >
+            Cotizar
+          </a>
+        </nav>
+
         <button
-          className={`menu-toggle${menuOpen ? ' is-open' : ''}`}
-          type="button"
+          className="nav-toggle"
           aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
           aria-expanded={menuOpen}
-          aria-controls="site-navigation"
-          onClick={() => setMenuOpen((open) => !open)}
+          onClick={() => setMenuOpen(o => !o)}
         >
-          <span />
-          <span />
+          <span style={menuOpen ? { transform: 'translateY(6.5px) rotate(45deg)' } : {}} />
+          <span style={menuOpen ? { opacity: 0 } : {}} />
+          <span style={menuOpen ? { transform: 'translateY(-6.5px) rotate(-45deg)' } : {}} />
         </button>
-        <nav className={`site-nav${menuOpen ? ' is-open' : ''}`} id="site-navigation" aria-label="Navegación principal">
-          {navigation.map(([id, label]) => (
-            <a href={`/#${id}`} key={id} onClick={() => setMenuOpen(false)}>{label}</a>
-          ))}
-          <a className="nav-cta" href="/#contacto" onClick={() => setMenuOpen(false)}>Contacto</a>
-        </nav>
       </div>
     </header>
   )

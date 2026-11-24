@@ -1,23 +1,72 @@
 function Footer() {
+  const year = new Date().getFullYear()
   return (
-    <footer className="site-footer">
-      <div className="container footer-main">
-        <div className="footer-brand">
-          <a href="/#inicio" aria-label="Construcciones Salma SPA, inicio">
-            <img src="/images/salma-logo.jpeg" width="168" height="60" alt="Construcciones Salma SPA" loading="lazy" />
-          </a>
-          <p>Construcciones Salma SPA</p>
+    <footer className="site-footer" role="contentinfo">
+      <div className="container">
+        <div className="footer-top">
+
+          {/* Columna marca */}
+          <div>
+            <div className="footer-brand">CSA<span>LMA</span></div>
+            <p className="footer-desc">
+              Construcciones CSALMA SPA. Obras civiles, fundaciones y estructuras
+              de alta exigencia técnica en Chile.
+            </p>
+            <a
+              href="https://wa.me/56912345678?text=Hola,%20me%20interesa%20solicitar%20una%20cotizaci%C3%B3n"
+              className="whatsapp-cta"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="whatsapp-dot" />
+              Contactar por WhatsApp
+            </a>
+          </div>
+
+          {/* Columna navegación */}
+          <div>
+            <p className="footer-col-title">Secciones</p>
+            <nav className="footer-links" aria-label="Navegación de pie de página">
+              <a href="#servicios">Servicios</a>
+              <a href="#obras">Obras</a>
+              <a href="#garantias">Garantías</a>
+              <a href="#contacto">Contacto</a>
+            </nav>
+          </div>
+
+          {/* Columna especialidades */}
+          <div>
+            <p className="footer-col-title">Especialidades</p>
+            <div className="footer-links">
+              <span>Construcción Integral</span>
+              <span>Obras Civiles</span>
+              <span>Fundaciones y Losas</span>
+              <span>Mantenimiento y Renovación</span>
+            </div>
+          </div>
+
+          {/* Columna contacto */}
+          <div>
+            <p className="footer-col-title">Contacto</p>
+            <div className="footer-contact-line">
+              <span>✉</span>
+              <a href="mailto:correo@csalma.cl">correo@csalma.cl</a>
+            </div>
+            <div className="footer-contact-line">
+              <span>◷</span>
+              <span>Lun–Vie 09:00–18:00</span>
+            </div>
+            <div className="footer-contact-line">
+              <span>◈</span>
+              <span>Santiago, Chile</span>
+            </div>
+          </div>
         </div>
-        <nav aria-label="Enlaces del pie de página">
-          <a href="/#empresa">Empresa</a>
-          <a href="/#servicios">Servicios</a>
-          <a href="/#proyectos">Proyectos</a>
-          <a href="/#contacto">Contacto</a>
-        </nav>
-      </div>
-      <div className="container footer-bottom">
-        <p>© {new Date().getFullYear()} Construcciones Salma SPA</p>
-        <a href="/#inicio">Volver arriba ↑</a>
+
+        <div className="footer-bottom">
+          <p className="footer-copy">© {year} Construcciones CSALMA SPA · Todos los derechos reservados</p>
+          <p className="footer-made">OBRAS CIVILES · FUNDACIONES · ESTRUCTURAS · CHILE</p>
+        </div>
       </div>
     </footer>
   )

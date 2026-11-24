@@ -3,7 +3,7 @@ import AboutSection from '../sections/AboutSection.jsx'
 import ServicesSection from '../sections/ServicesSection.jsx'
 import ProcessSection from '../sections/ProcessSection.jsx'
 import ProjectsSection from '../sections/ProjectsSection.jsx'
-import ReasonsSection from '../sections/ReasonsSection.jsx'
+import PillarsSection from '../sections/PillarsSection.jsx'
 import ContactSection from '../sections/ContactSection.jsx'
 
 function HomePage() {
@@ -22,7 +22,7 @@ function HomePage() {
       <ServicesSection />
       <ProcessSection />
       <ProjectsSection />
-      <ReasonsSection />
+      <PillarsSection />
       <ContactSection />
     </>
   )
