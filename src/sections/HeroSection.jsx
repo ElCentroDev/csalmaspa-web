@@ -5,7 +5,11 @@ function HeroSection() {
       <div className="hero-overlay" />
       <div className="container hero-content">
         <p className="eyebrow eyebrow-light">Obras civiles · Fundaciones · Estructuras · Chile</p>
-        <h1>Construimos lo que otros no se atreven</h1>
+        <h1>
+          Construimos<br />
+          lo que otros<br />
+          no se atreven
+        </h1>
         <span className="hero-rule" />
         <p className="hero-copy">Desde las fundaciones hasta la entrega, ejecutamos proyectos de construcción con precisión técnica y compromiso.</p>
         <div className="hero-actions">
