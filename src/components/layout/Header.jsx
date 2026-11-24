@@ -1,15 +1,24 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const closeMenu = () => setMenuOpen(false)
 
+  const handleLogoClick = (e) => {
+    closeMenu()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <header className="site-header" role="banner">
       <div className="container header-inner">
-        <Link className="brand" to="/" aria-label="CSALMA — Inicio">
+        <a
+          className="brand"
+          href="#inicio"
+          onClick={handleLogoClick}
+          aria-label="CSALMA — Volver al inicio"
+        >
           <img
             src="/images/logo.webp"
             alt="CSALMA"
@@ -19,7 +28,7 @@ function Header() {
             }}
           />
           <span className="brand-logo">CSA<span>LMA</span></span>
-        </Link>
+        </a>
 
         <nav
           className={`site-nav${menuOpen ? ' open' : ''}`}

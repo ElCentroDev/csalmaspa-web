@@ -32,14 +32,14 @@ function ProjectsSection() {
       <div className="container">
         <div className="section-heading projects-heading">
           <div>
-            <p className="eyebrow">Trabajo en terreno</p>
+            <p className="eyebrow">Registro en terreno</p>
             <h2 id="projects-title">Nuestra experiencia y proyectos</h2>
           </div>
           <p>Una selección de registros de obras, estructuras y procesos constructivos ejecutados por CSALMA.</p>
         </div>
-        <div className="project-grid">
+        <div className="project-bento-grid">
           {projects.map((project, index) => (
-            <figure className={`project-card project-card-${index + 1}`} key={project.image}>
+            <figure className={`project-bento-card project-bento-card-${index + 1}`} key={project.image}>
               <img src={project.image} alt={project.alt} loading="lazy" />
               <figcaption>
                 <span>{project.type}</span>
