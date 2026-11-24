@@ -1,6 +1,8 @@
 # Construcciones Salma SPA
 
-Sitio corporativo desarrollado con React, Vite, JavaScript y CSS tradicional.
+Base del sitio corporativo de Construcciones Salma SPA, desarrollada con React,
+Vite, JavaScript y CSS tradicional. El contenido comercial se agregará cuando
+esté validado por la empresa.
 
 ## Desarrollo
 
@@ -15,6 +17,9 @@ Sitio corporativo desarrollado con React, Vite, JavaScript y CSS tradicional.
 - `src/pages/`: páginas asociadas a las rutas.
 - `src/sections/`: secciones reutilizables de página.
 - `src/styles/`: estilos globales y variables de presentación.
+
+La portada actual es una página inicial neutral; no contiene servicios, datos
+de contacto ni afirmaciones corporativas pendientes de validar.
 
 El destino de publicación previsto es `/var/www/csalma` en `https://csalma.cl`.
 Las rutas de React Router en producción requieren que Nginx entregue `index.html`
