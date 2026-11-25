@@ -7,19 +7,16 @@
 
 declare(strict_types=1);
 
-// Encabezados estrictos de seguridad
+date_default_timezone_set('America/Santiago');
+
+// Encabezados estrictos de seguridad (OWASP / Ley N° 21.663)
 header('Content-Type: application/json; charset=UTF-8');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('X-XSS-Protection: 1; mode=block');
 header('Referrer-Policy: strict-origin-when-cross-origin');
-
-// Permitir únicamente solicitudes POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Método no permitido.']);
-    exit;
-}
+header("Content-Security-Policy: default-src 'none'");
+header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 
 // 1. Control de Origen (CORS estricto)
 $allowedOrigins = [
@@ -33,7 +30,19 @@ $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $allowedOrigins, true)) {
     header("Access-Control-Allow-Origin: {$origin}");
     header('Access-Control-Allow-Methods: POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
+    header('Access-Control-Allow-Headers: Content-Type, Accept');
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+// Permitir únicamente solicitudes POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Método no permitido.']);
+    exit;
 }
 
 // 2. Control de Tamaño Máximo del Payload (Mitigación DoS - Máximo 64 KB)
@@ -220,7 +229,7 @@ $cuerpoHtml = <<<HTML
 
         <div class="footer">
             Mensaje originado de forma segura desde el portal corporativo de Construcciones CSALMA SPA.<br>
-            Cumple con Ley N° 19.628 de Protección de Datos Personales.
+            Consentimiento Ley N° 19.628 autorizado el {$fechaEnvio} | Trazabilidad IP Hash: {$ipHash}
         </div>
     </div>
 </body>

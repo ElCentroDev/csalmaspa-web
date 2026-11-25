@@ -17,10 +17,11 @@ function isWebGLAvailable() {
   }
 }
 
-function addWireframeEdges(mesh, lineMaterial) {
-  const edges = new THREE.EdgesGeometry(mesh.geometry)
+function addWireframeEdges(mesh, lineMaterial, sharedEdges) {
+  const edges = sharedEdges || new THREE.EdgesGeometry(mesh.geometry)
   const line = new THREE.LineSegments(edges, lineMaterial)
   mesh.add(line)
+  return edges
 }
 
 function HeroArchitectureScene({ triggerRef, onFallback }) {
@@ -44,194 +45,226 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
         powerPreference: 'high-performance',
       })
     } catch {
-      setFailed(true)
       if (onFallback) onFallback()
       return
     }
 
-    const maxDpr = isMobile ? 1.5 : 2
+    const maxDpr = isMobile ? 1 : 1.5
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDpr))
     renderer.setSize(container.clientWidth, container.clientHeight)
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.15
+    renderer.toneMappingExposure = 1.22
     container.appendChild(renderer.domElement)
 
     const scene = new THREE.Scene()
+    scene.fog = new THREE.FogExp2(0x17191a, 0.042)
 
     let compactViewport = window.innerWidth < 900
     const camera = new THREE.PerspectiveCamera(
-      compactViewport ? 42 : 36,
+      compactViewport ? 42 : 35,
       container.clientWidth / Math.max(container.clientHeight, 1),
       0.1,
       100
     )
 
-    // Iluminación cinematográfica Industrial Hybrid
-    const ambientLight = new THREE.AmbientLight(0xd8dde2, 0.55)
+    // Iluminación arquitectónica de estudio
+    const ambientLight = new THREE.AmbientLight(0xdce2e8, 0.62)
     scene.add(ambientLight)
 
-    const keyLight = new THREE.DirectionalLight(0xffe4b5, 2.2)
-    keyLight.position.set(7, 11, 6)
+    const keyLight = new THREE.DirectionalLight(0xffe6bd, 2.35)
+    keyLight.position.set(7, 12, 7)
     scene.add(keyLight)
 
-    const rimLight = new THREE.DirectionalLight(0x747b7d, 1.1)
-    rimLight.position.set(-8, 5, -6)
+    const rimLight = new THREE.DirectionalLight(0x7c868a, 1.25)
+    rimLight.position.set(-8, 6, -6)
     scene.add(rimLight)
 
-    const bronzeAccentLight = new THREE.PointLight(0xd6a34a, 2.4, 14)
-    bronzeAccentLight.position.set(1.2, 2.4, 1.8)
+    const bronzeAccentLight = new THREE.PointLight(0xd6a34a, 2.8, 15)
+    bronzeAccentLight.position.set(1.4, 2.6, 2.8)
     scene.add(bronzeAccentLight)
 
-    // Grupo maestro con encuadre adaptativo (derecha en desktop, centrado en móvil)
+    // Grupo maestro con encuadre adaptativo
     const worldGroup = new THREE.Group()
     const applyLayoutFraming = (width) => {
       compactViewport = width < 900
-      camera.fov = compactViewport ? 42 : 36
+      camera.fov = compactViewport ? 42 : 35
       if (compactViewport) {
-        worldGroup.position.set(0, -0.3, 0)
+        worldGroup.position.set(0, -0.32, 0)
       } else {
-        worldGroup.position.set(2.55, -0.42, -1.1)
+        worldGroup.position.set(2.55, -0.45, -1.05)
       }
       camera.updateProjectionMatrix()
     }
     applyLayoutFraming(window.innerWidth)
-    worldGroup.rotation.y = Math.PI / 16
+    worldGroup.rotation.y = Math.PI / 15
     scene.add(worldGroup)
 
-    // Materiales compartidos para optimizar draw calls y limpieza
+    // Materiales compartidos
     const matConcrete = new THREE.MeshStandardMaterial({
-      color: 0x292d2f,
+      color: 0x262a2c,
       roughness: 0.78,
-      metalness: 0.12,
+      metalness: 0.14,
     })
     const matSteel = new THREE.MeshStandardMaterial({
-      color: 0x4b5154,
-      roughness: 0.3,
-      metalness: 0.78,
+      color: 0x4c5357,
+      roughness: 0.28,
+      metalness: 0.82,
     })
     const matBronze = new THREE.MeshStandardMaterial({
       color: 0xd6a34a,
-      roughness: 0.28,
-      metalness: 0.85,
+      roughness: 0.25,
+      metalness: 0.88,
     })
     const matSlab = new THREE.MeshStandardMaterial({
-      color: 0x232729,
-      roughness: 0.55,
-      metalness: 0.35,
+      color: 0x202426,
+      roughness: 0.52,
+      metalness: 0.38,
       transparent: true,
-      opacity: 0.92,
+      opacity: 0.94,
     })
-    const matGlass = new THREE.MeshPhysicalMaterial({
-      color: 0x747b7d,
-      roughness: 0.12,
-      metalness: 0.1,
+    const matGlass = new THREE.MeshStandardMaterial({
+      color: 0x7c868a,
+      roughness: 0.18,
+      metalness: 0.28,
       transparent: true,
       opacity: 0.16,
     })
     const lineBronze = new THREE.LineBasicMaterial({
       color: 0xd6a34a,
       transparent: true,
-      opacity: 0.48,
+      opacity: 0.52,
     })
     const lineSteel = new THREE.LineBasicMaterial({
-      color: 0x747b7d,
+      color: 0x828b8e,
       transparent: true,
-      opacity: 0.28,
+      opacity: 0.3,
     })
 
     // ---------------------------------------------------------
-    // ETAPA 1: Terreno y Fundaciones
+    // ETAPA 1: Terreno topográfico y Fundaciones escalonadas
     // ---------------------------------------------------------
     const foundationGroup = new THREE.Group()
     worldGroup.add(foundationGroup)
 
-    const gridHelper = new THREE.GridHelper(9.5, 16, 0xd6a34a, 0x3a3f42)
+    const gridHelper = new THREE.GridHelper(11, 14, 0xd6a34a, 0x383e42)
     gridHelper.material.transparent = true
-    gridHelper.material.opacity = 0.22
+    gridHelper.material.opacity = 0.24
     foundationGroup.add(gridHelper)
 
-    const plinthGeo = new THREE.BoxGeometry(4.4, 0.22, 3.6)
+    const subPlinthGeo = new THREE.BoxGeometry(4.65, 0.1, 3.85)
+    const subPlinth = new THREE.Mesh(subPlinthGeo, matConcrete)
+    subPlinth.position.y = 0.05
+    addWireframeEdges(subPlinth, lineSteel)
+    foundationGroup.add(subPlinth)
+
+    const plinthGeo = new THREE.BoxGeometry(4.35, 0.2, 3.55)
     const plinth = new THREE.Mesh(plinthGeo, matConcrete)
-    plinth.position.y = 0.11
+    plinth.position.y = 0.2
     addWireframeEdges(plinth, lineBronze)
     foundationGroup.add(plinth)
 
-    const footingGeo = new THREE.BoxGeometry(0.46, 0.26, 0.46)
+    const footingGeo = new THREE.BoxGeometry(0.46, 0.22, 0.46)
     const colPositions = [
       [-1.7, -1.3], [0, -1.3], [1.7, -1.3],
       [-1.7, 0],    [0, 0],    [1.7, 0],
       [-1.7, 1.3],  [0, 1.3],  [1.7, 1.3],
     ]
+    const footingEdges = new THREE.EdgesGeometry(footingGeo)
     colPositions.forEach(([x, z]) => {
       const footing = new THREE.Mesh(footingGeo, matConcrete)
-      footing.position.set(x, 0.28, z)
-      addWireframeEdges(footing, lineSteel)
+      footing.position.set(x, 0.36, z)
+      addWireframeEdges(footing, lineSteel, footingEdges)
       foundationGroup.add(footing)
     })
 
     // ---------------------------------------------------------
-    // ETAPA 2: Estructura Principal (Pilares simétricos 3x3 hasta cubierta)
+    // ETAPA 2: Estructura Principal (Pilares 3x3 + Vigas + Arriostramiento sísmico)
     // ---------------------------------------------------------
     const structureGroup = new THREE.Group()
     worldGroup.add(structureGroup)
 
     const pillarGeo = new THREE.BoxGeometry(0.18, 3.68, 0.18)
+    const pillarEdges = new THREE.EdgesGeometry(pillarGeo)
     colPositions.forEach(([x, z]) => {
       const pillar = new THREE.Mesh(pillarGeo, matSteel)
-      pillar.position.set(x, 2.12, z)
-      addWireframeEdges(pillar, lineSteel)
+      pillar.position.set(x, 2.18, z)
+      addWireframeEdges(pillar, lineSteel, pillarEdges)
       structureGroup.add(pillar)
     })
 
-    // Núcleo estructural vertical simétrico (apoyado desde base hasta cubierta)
+    // Núcleo estructural central
     const coreGeo = new THREE.BoxGeometry(1.05, 3.68, 0.85)
     const core = new THREE.Mesh(coreGeo, matConcrete)
-    core.position.set(0, 2.12, 0)
+    core.position.set(0, 2.18, 0)
     addWireframeEdges(core, lineBronze)
     structureGroup.add(core)
 
+    // Arriostramientos diagonales sísmicos (cruz de San Andrés en acero sobre caras laterales)
+    const bracePoints = [
+      [new THREE.Vector3(1.7, 1.38, -1.3), new THREE.Vector3(1.7, 2.44, 0)],
+      [new THREE.Vector3(1.7, 2.44, -1.3), new THREE.Vector3(1.7, 1.38, 0)],
+      [new THREE.Vector3(1.7, 2.44, 0), new THREE.Vector3(1.7, 3.50, 1.3)],
+      [new THREE.Vector3(1.7, 3.50, 0), new THREE.Vector3(1.7, 2.44, 1.3)],
+    ]
+    bracePoints.forEach(([p1, p2]) => {
+      const braceGeo = new THREE.BufferGeometry().setFromPoints([p1, p2])
+      const braceLine = new THREE.Line(braceGeo, lineBronze)
+      structureGroup.add(braceLine)
+    })
+
     // ---------------------------------------------------------
-    // ETAPA 3: Desarrollo Constructivo (3 Losas simétricas sujetas a pilares)
+    // ETAPA 3: Losas y Vigas Perimetrales
     // ---------------------------------------------------------
     const slabsGroup = new THREE.Group()
     worldGroup.add(slabsGroup)
 
     const levels = [
-      { y: 1.32, w: 3.9, d: 3.1 },
-      { y: 2.38, w: 3.9, d: 3.1 },
-      { y: 3.44, w: 3.9, d: 3.1 },
+      { y: 1.38, w: 3.92, d: 3.12 },
+      { y: 2.44, w: 3.92, d: 3.12 },
+      { y: 3.50, w: 3.92, d: 3.12 },
     ]
+    const beamFrontGeo = new THREE.BoxGeometry(3.96, 0.08, 0.08)
+    const beamSideGeo = new THREE.BoxGeometry(0.08, 0.08, 3.16)
+
     levels.forEach((lvl) => {
       const slabGeo = new THREE.BoxGeometry(lvl.w, 0.14, lvl.d)
       const slab = new THREE.Mesh(slabGeo, matSlab)
       slab.position.set(0, lvl.y, 0)
       addWireframeEdges(slab, lineBronze)
       slabsGroup.add(slab)
+
+      // Vigas metálicas de borde bajo cada losa
+      const beamFront = new THREE.Mesh(beamFrontGeo, matSteel)
+      beamFront.position.set(0, lvl.y - 0.1, lvl.d / 2 - 0.04)
+      slabsGroup.add(beamFront)
+
+      const beamRight = new THREE.Mesh(beamSideGeo, matSteel)
+      beamRight.position.set(lvl.w / 2 - 0.04, lvl.y - 0.1, 0)
+      slabsGroup.add(beamRight)
     })
 
     // ---------------------------------------------------------
-    // ETAPA 4: Terminaciones (Celosías simétricas, Emblema CSALMA y Cubierta apoyada)
+    // ETAPA 4: Envolvente, Celosías Bronce, Logo CSALMA y Cubierta
     // ---------------------------------------------------------
     const envelopeGroup = new THREE.Group()
     worldGroup.add(envelopeGroup)
 
     const facadeGlassGeo = new THREE.BoxGeometry(3.6, 2.12, 2.8)
     const facadeGlass = new THREE.Mesh(facadeGlassGeo, matGlass)
-    facadeGlass.position.set(0, 2.38, 0)
+    facadeGlass.position.set(0, 2.44, 0)
     envelopeGroup.add(facadeGlass)
 
-    // Celosías arquitectónicas verticales en bronce (ancladas entre losa 1 y losa 3)
-    const finGeo = new THREE.BoxGeometry(0.05, 2.12, 0.12)
+    const finGeo = new THREE.BoxGeometry(0.055, 2.12, 0.13)
     for (let i = -3; i <= 3; i += 1) {
       if (i >= -1 && i <= 1) continue
       const fin = new THREE.Mesh(finGeo, matBronze)
-      fin.position.set(i * 0.48, 2.38, 1.56)
+      fin.position.set(i * 0.48, 2.44, 1.56)
       envelopeGroup.add(fin)
     }
 
     // Emblema 3D corporativo CSALMA centrado en la fachada frontal
     const logoGroup = new THREE.Group()
-    logoGroup.position.set(0, 2.38, 1.59)
+    logoGroup.position.set(0, 2.44, 1.59)
     envelopeGroup.add(logoGroup)
 
     const plaqueGeo = new THREE.BoxGeometry(1.06, 1.06, 0.05)
@@ -240,18 +273,18 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
     logoGroup.add(plaque)
 
     const matLogoCopper = new THREE.MeshStandardMaterial({
-      color: 0xd17a36,
-      roughness: 0.32,
-      metalness: 0.62,
+      color: 0xd67c35,
+      roughness: 0.28,
+      metalness: 0.65,
       emissive: 0x3b1b05,
-      emissiveIntensity: 0.35,
+      emissiveIntensity: 0.4,
     })
     const matLogoNavy = new THREE.MeshStandardMaterial({
-      color: 0x183961,
-      roughness: 0.34,
-      metalness: 0.55,
+      color: 0x1a3f6b,
+      roughness: 0.3,
+      metalness: 0.58,
       emissive: 0x081629,
-      emissiveIntensity: 0.45,
+      emissiveIntensity: 0.48,
     })
 
     const extrudeSettings = {
@@ -259,10 +292,9 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
       bevelEnabled: true,
       bevelThickness: 0.012,
       bevelSize: 0.01,
-      bevelSegments: 2,
+      bevelSegments: 1,
     }
 
-    // Brazo superior cobre: estrictamente en y >= 0.03 (cero cruce / cero z-fighting)
     const topShape = new THREE.Shape()
     topShape.moveTo(-0.28, 0.16)
     topShape.lineTo(0.24, 0.38)
@@ -277,7 +309,6 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
     topMesh.position.z = 0.026
     logoGroup.add(topMesh)
 
-    // Brazo inferior azul marino: espejo simétrico exacto en y <= -0.03
     const bottomShape = new THREE.Shape()
     bottomShape.moveTo(0.28, -0.16)
     bottomShape.lineTo(-0.24, -0.38)
@@ -292,10 +323,10 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
     bottomMesh.position.z = 0.026
     logoGroup.add(bottomMesh)
 
-    // Cubierta superior técnica apoyada exactamente sobre pilares y núcleo (y = 4.02)
-    const roofGeo = new THREE.BoxGeometry(3.98, 0.14, 3.18)
+    // Cubierta superior técnica apoyada sobre pilares y núcleo (y = 4.08)
+    const roofGeo = new THREE.BoxGeometry(4.0, 0.14, 3.2)
     const roof = new THREE.Mesh(roofGeo, matSteel)
-    roof.position.set(0, 4.02, 0)
+    roof.position.set(0, 4.08, 0)
     addWireframeEdges(roof, lineBronze)
     envelopeGroup.add(roof)
 
@@ -305,17 +336,16 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
     const cadGroup = new THREE.Group()
     worldGroup.add(cadGroup)
 
-    const outerFrameGeo = new THREE.BoxGeometry(4.6, 4.3, 3.8)
+    const outerFrameGeo = new THREE.BoxGeometry(4.65, 4.35, 3.85)
     const outerEdges = new THREE.EdgesGeometry(outerFrameGeo)
     const outerFrame = new THREE.LineSegments(outerEdges, lineSteel)
-    outerFrame.position.set(0, 2.15, 0)
+    outerFrame.position.set(0, 2.2, 0)
     cadGroup.add(outerFrame)
 
-    // Nodos de cota en bronce
     const nodeGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08)
     const nodeCoords = [
-      [-2.3, 4.3, 1.9], [2.3, 4.3, 1.9],
-      [-2.3, 0.05, 1.9], [2.3, 0.05, -1.9],
+      [-2.32, 4.37, 1.92], [2.32, 4.37, 1.92],
+      [-2.32, 0.05, 1.92], [2.32, 0.05, -1.92],
     ]
     nodeCoords.forEach(([x, y, z]) => {
       const node = new THREE.Mesh(nodeGeo, matBronze)
@@ -323,17 +353,15 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
       cadGroup.add(node)
     })
 
-    // ---------------------------------------------------------
-    // Animación inicial y ScrollTrigger con GSAP
-    // ---------------------------------------------------------
+    // Animación inicial y ScrollTrigger limpio (sin desarmar pisos)
     const ctx = gsap.context(() => {
       const intro = gsap.timeline({ defaults: { ease: 'power3.out' } })
       intro
-        .from(foundationGroup.position, { y: -0.6, duration: 0.8 }, 0)
-        .from(structureGroup.scale, { y: 0.01, duration: 0.9 }, 0.25)
-        .from(slabsGroup.position, { y: 0.8, duration: 0.85 }, 0.45)
-        .from(envelopeGroup.scale, { x: 0.88, y: 0.88, z: 0.88, duration: 0.85 }, 0.65)
-        .from(cadGroup.scale, { x: 1.08, y: 1.08, z: 1.08, duration: 0.9 }, 0.7)
+        .from(foundationGroup.position, { y: -0.35, duration: 0.45 }, 0)
+        .from(structureGroup.scale, { y: 0.05, duration: 0.5 }, 0.08)
+        .from(slabsGroup.position, { y: 0.45, duration: 0.45 }, 0.14)
+        .from(envelopeGroup.scale, { x: 0.92, y: 0.92, z: 0.92, duration: 0.45 }, 0.2)
+        .from(cadGroup.scale, { x: 1.04, y: 1.04, z: 1.04, duration: 0.45 }, 0.22)
 
       if (triggerRef?.current) {
         const scrollTl = gsap.timeline({
@@ -344,12 +372,10 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
             scrub: 0.8,
           },
         })
-        scrollTl
-          .to(worldGroup.rotation, { y: Math.PI / 5, x: 0.04, ease: 'none' }, 0)
+        scrollTl.to(worldGroup.rotation, { y: Math.PI / 5, x: 0.04, ease: 'none' }, 0)
       }
     })
 
-    // Seguimiento sutil del puntero (solo desktop)
     const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 }
     const handlePointerMove = (e) => {
       if (isMobile) return
@@ -358,7 +384,6 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
     }
     window.addEventListener('pointermove', handlePointerMove, { passive: true })
 
-    // ResizeObserver limpio con reencuadre responsivo
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect
@@ -372,7 +397,6 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
     })
     resizeObserver.observe(container)
 
-    // Pausar loop cuando el hero no está visible en pantalla
     let isVisible = true
     const intersectionObserver = new IntersectionObserver(
       ([entry]) => {
@@ -399,13 +423,12 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
       pointer.x += (pointer.targetX - pointer.x) * 0.05
       pointer.y += (pointer.targetY - pointer.y) * 0.05
 
-      // Respiración arquitectónica sutil + cursor + cámara adaptativa
-      const baseY = compactViewport ? -0.3 : -0.42
-      worldGroup.position.y = baseY + Math.sin(t * 0.7) * 0.06
+      const baseY = compactViewport ? -0.32 : -0.45
+      worldGroup.position.y = baseY + Math.sin(t * 0.7) * 0.05
       const camBaseX = compactViewport ? 3.2 : 5.0
-      const camBaseY = compactViewport ? 3.8 : 4.3
+      const camBaseY = compactViewport ? 3.8 : 4.35
       const camBaseZ = compactViewport ? 11.4 : 9.8
-      const lookY = compactViewport ? 1.8 : 1.65
+      const lookY = compactViewport ? 1.8 : 1.7
 
       camera.position.x = camBaseX + (compactViewport ? 0 : pointer.x * 0.55)
       camera.position.y = camBaseY - (compactViewport ? 0 : pointer.y * 0.35)

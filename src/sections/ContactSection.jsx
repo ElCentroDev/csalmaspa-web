@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 function useReveal() {
   const ref = useRef(null)
@@ -339,7 +340,10 @@ function ContactSection() {
                     style={{ marginTop: '3px', accentColor: 'var(--color-accent)', cursor: 'pointer' }}
                   />
                   <label htmlFor="cf-consentimiento" style={{ fontSize: '0.78rem', color: 'var(--color-concrete)', lineHeight: 1.45, cursor: 'pointer' }}>
-                    Autorizo el tratamiento de mis datos de contacto exclusivamente para la evaluación técnica y comercial de esta solicitud por parte de Construcciones CSALMA SPA (Ley N° 19.628).
+                    Autorizo el tratamiento de mis datos de contacto exclusivamente para la evaluación técnica y comercial de esta solicitud por parte de Construcciones CSALMA SPA conforme a la{' '}
+                    <Link to="/privacidad" style={{ color: 'var(--color-accent)', textDecoration: 'underline' }}>
+                      Política de Privacidad (Ley N° 19.628)
+                    </Link>.
                   </label>
                 </div>
 

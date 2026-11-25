@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 const projects = [
   {
     title: 'Edificación y Muros Estructurales',
@@ -26,6 +28,19 @@ const projects = [
 ]
 
 function ProjectsSection() {
+  const [selectedProject, setSelectedProject] = useState(null)
+
+  useEffect(() => {
+    if (!selectedProject) return
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setSelectedProject(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedProject])
+
   return (
     <section className="projects-section section-wrap" id="obras" aria-labelledby="projects-title">
       <span id="proyectos" style={{ display: 'block', position: 'relative', top: '-100px', visibility: 'hidden' }} />
@@ -35,11 +50,24 @@ function ProjectsSection() {
             <p className="eyebrow">Registro en terreno</p>
             <h2 id="projects-title">Nuestra experiencia y proyectos</h2>
           </div>
-          <p>Una selección de registros de obras, estructuras y procesos constructivos ejecutados por CSALMA.</p>
+          <p>Una selección de registros de obras, estructuras y procesos constructivos ejecutados por CSALMA. Haz clic en una obra para ampliarla.</p>
         </div>
         <div className="project-bento-grid">
           {projects.map((project, index) => (
-            <figure className={`project-bento-card project-bento-card-${index + 1}`} key={project.image}>
+            <figure
+              className={`project-bento-card project-bento-card-${index + 1}`}
+              key={project.image}
+              role="button"
+              tabIndex={0}
+              aria-label={`Ampliar imagen de ${project.title}`}
+              onClick={() => setSelectedProject(project)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  setSelectedProject(project)
+                }
+              }}
+            >
               <img src={project.image} alt={project.alt} loading="lazy" />
               <figcaption>
                 <span>{project.type}</span>
@@ -49,6 +77,32 @@ function ProjectsSection() {
           ))}
         </div>
       </div>
+
+      {selectedProject && (
+        <div
+          className="project-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={selectedProject.title}
+          onClick={() => setSelectedProject(null)}
+        >
+          <div className="project-lightbox-content">
+            <button
+              type="button"
+              className="project-lightbox-close"
+              aria-label="Cerrar vista ampliada"
+              onClick={() => setSelectedProject(null)}
+            >
+              ✕
+            </button>
+            <img src={selectedProject.image} alt={selectedProject.alt} />
+            <div className="project-lightbox-caption">
+              <span>{selectedProject.type}</span>
+              <strong>{selectedProject.title}</strong>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

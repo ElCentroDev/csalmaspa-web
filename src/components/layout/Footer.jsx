@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 function Footer() {
   const year = new Date().getFullYear()
   return (
@@ -27,10 +29,11 @@ function Footer() {
           <div>
             <p className="footer-col-title">Secciones</p>
             <nav className="footer-links" aria-label="Navegación de pie de página">
-              <a href="#servicios">Servicios</a>
-              <a href="#obras">Obras</a>
-              <a href="#garantias">Garantías</a>
-              <a href="#contacto">Contacto</a>
+              <Link to="/quienes-somos">Quiénes somos</Link>
+              <Link to="/#servicios">Servicios</Link>
+              <Link to="/#obras">Obras</Link>
+              <Link to="/#garantias">Garantías</Link>
+              <Link to="/#contacto">Contacto</Link>
             </nav>
           </div>
 
@@ -64,7 +67,12 @@ function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <p className="footer-copy">© {year} Construcciones CSALMA SPA · Todos los derechos reservados</p>
+          <p className="footer-copy">
+            © {year} Construcciones CSALMA SPA · Todos los derechos reservados ·{' '}
+            <Link to="/privacidad" style={{ textDecoration: 'underline' }}>
+              Política de Privacidad (Ley N° 19.628)
+            </Link>
+          </p>
           <p className="footer-made">OBRAS CIVILES · FUNDACIONES · ESTRUCTURAS · CHILE</p>
         </div>
       </div>

@@ -1,12 +1,21 @@
 import { useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const { pathname, hash } = useLocation()
+  const navigate = useNavigate()
 
   const closeMenu = () => setMenuOpen(false)
 
-  const handleLogoClick = (e) => {
+  const handleLogoClick = (event) => {
+    event.preventDefault()
     closeMenu()
+    if (pathname !== '/' || hash) {
+      navigate('/')
+      window.scrollTo({ top: 0, behavior: 'auto' })
+      return
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -15,9 +24,9 @@ function Header() {
       <div className="container header-inner">
         <a
           className="brand"
-          href="#inicio"
+          href="/"
           onClick={handleLogoClick}
-          aria-label="CSALMA — Volver al inicio"
+          aria-label="CSALMA — Ir a la pantalla principal"
         >
           <img
             src="/images/logo.webp"
@@ -34,10 +43,17 @@ function Header() {
           className={`site-nav${menuOpen ? ' open' : ''}`}
           aria-label="Navegación principal"
         >
-          <a href="#servicios" onClick={closeMenu}>Servicios</a>
-          <a href="#obras" onClick={closeMenu}>Obras</a>
-          <a href="#garantias" onClick={closeMenu}>Garantías</a>
-          <a href="#contacto" onClick={closeMenu}>Contacto</a>
+          <Link
+            to="/quienes-somos"
+            className={pathname === '/quienes-somos' ? 'nav-link-active' : ''}
+            onClick={closeMenu}
+          >
+            Quiénes somos
+          </Link>
+          <Link to="/#servicios" onClick={closeMenu}>Servicios</Link>
+          <Link to="/#obras" onClick={closeMenu}>Obras</Link>
+          <Link to="/#garantias" onClick={closeMenu}>Garantías</Link>
+          <Link to="/#contacto" onClick={closeMenu}>Contacto</Link>
           <a
             href="https://wa.me/56912345678?text=Hola,%20me%20interesa%20solicitar%20una%20cotizaci%C3%B3n"
             className="nav-cta"
@@ -50,10 +66,11 @@ function Header() {
         </nav>
 
         <button
+          type="button"
           className="nav-toggle"
           aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
           aria-expanded={menuOpen}
-          onClick={() => setMenuOpen(o => !o)}
+          onClick={() => setMenuOpen((o) => !o)}
         >
           <span style={menuOpen ? { transform: 'translateY(6.5px) rotate(45deg)' } : {}} />
           <span style={menuOpen ? { opacity: 0 } : {}} />
