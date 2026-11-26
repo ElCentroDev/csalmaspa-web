@@ -2,32 +2,25 @@ import { Link } from 'react-router-dom'
 
 const TEAM_ROLES = [
   {
-    code: 'DIR // 01',
-    name: 'Dirección General',
-    role: 'Gerencia y Licitaciones',
-    bio: 'Lidera la relación contractual con el mandante, evaluación técnica de presupuestos cerrados y seguimiento estratégico de cada proyecto.',
+    name: 'Gerente General',
+    role: 'Dirección Ejecutiva y Licitaciones',
+    bio: 'Lidera la relación contractual con el mandante, evaluación de presupuestos cerrados y dirección estratégica de cada proyecto.',
     email: 'correo@csalma.cl',
+    whatsappText: 'Hola%20CSALMA,%20quisiera%20contactar%20con%20Gerencia%20General',
   },
   {
-    code: 'ING // 02',
-    name: 'Gerencia Técnica',
+    name: 'Gerente Técnico',
     role: 'Ingeniería y Normativa NCh433',
     bio: 'Responsable de cubicaciones, revisión de planos estructurales, trazabilidad de materiales y cumplimiento de normativa sísmica chilena.',
     email: 'correo@csalma.cl',
+    whatsappText: 'Hola%20CSALMA,%20quisiera%20contactar%20con%20Gerencia%20T%C3%A9cnica',
   },
   {
-    code: 'OBR // 03',
-    name: 'Jefatura de Terreno',
-    role: 'Supervisión Residente en Faena',
-    bio: 'Coordina especialidades en obra, controla avances de Carta Gantt, tolerancias constructivas y estándares de seguridad laboral.',
+    name: 'Gerente de Operaciones',
+    role: 'Ejecución y Supervisión en Terreno',
+    bio: 'Coordina especialidades en faena, controla avances de Carta Gantt, tolerancias constructivas y seguridad laboral en obra.',
     email: 'correo@csalma.cl',
-  },
-  {
-    code: 'ADM // 04',
-    name: 'Post-Venta y Calidad',
-    role: 'Inspección y Recepción Conforme',
-    bio: 'Ejecuta controles de calidad previos a la entrega y brinda soporte técnico post-entrega con respaldo formal.',
-    email: 'correo@csalma.cl',
+    whatsappText: 'Hola%20CSALMA,%20quisiera%20contactar%20con%20Gerencia%20de%20Operaciones',
   },
 ]
 
@@ -55,7 +48,7 @@ const PILLARS_VALUES = [
 function AboutPage() {
   return (
     <div className="about-page">
-      {/* 1. Banner fotográfico de empresa + submenú editorial (estilo referencia 1) */}
+      {/* 1. Banner fotográfico de empresa + submenú natural */}
       <section className="about-banner">
         <img
           className="about-banner-img"
@@ -78,62 +71,16 @@ function AboutPage() {
         <div className="about-subnav-bar">
           <div className="container about-subnav-inner">
             <nav className="about-subnav-links" aria-label="Secciones de Quiénes somos">
-              <a href="#equipo">Equipo</a>
               <a href="#sobre-csalma">Sobre CSALMA</a>
+              <a href="#equipo">Equipo</a>
               <a href="#mision-vision">Misión y Visión</a>
             </nav>
-            <span className="about-subnav-badge">CSALMA // CHILE</span>
+            <span className="about-subnav-badge">Construcciones CSALMA SPA · Chile</span>
           </div>
         </div>
       </section>
 
-      {/* 2. Equipo en grilla limpia de 4 columnas (estilo referencia 2) */}
-      <section className="about-team section-wrap" id="equipo" aria-labelledby="team-title">
-        <div className="container">
-          <header className="about-team-header">
-            <h2 id="team-title">Quiénes somos</h2>
-            <p className="about-team-subtitle">
-              Equipo multidisciplinario de Ingeniería, Construcción y Supervisión en Terreno
-            </p>
-            <p className="about-team-intro">
-              Cada proyecto cuenta con profesionales residentes y especialistas dedicados a coordinar
-              las partidas críticas desde la planificación inicial hasta la entrega final.
-            </p>
-          </header>
-
-          <div className="about-team-grid">
-            {TEAM_ROLES.map((member) => (
-              <article className="about-team-card" key={member.code}>
-                <div className="about-team-photo" aria-hidden="true">
-                  <span className="about-team-code">{member.code}</span>
-                  <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" width="52" height="52">
-                    <circle cx="32" cy="22" r="10" />
-                    <path d="M14 54c0-10 8-16 18-16s18 6 18 16" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <h3>{member.name}</h3>
-                <p className="about-team-role">{member.role}</p>
-                <p className="about-team-bio">{member.bio}</p>
-                <div className="about-team-links">
-                  <a href={`mailto:${member.email}`} aria-label={`Enviar correo a ${member.name}`}>
-                    ✉
-                  </a>
-                  <a
-                    href="https://wa.me/56912345678?text=Hola%20CSALMA,%20quisiera%20contactar%20al%20equipo%20t%C3%A9cnico"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Contactar por WhatsApp a ${member.name}`}
-                  >
-                    ✆
-                  </a>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 3. About / Información corporativa de CSALMA (estilo referencia 1 inferior) */}
+      {/* 2. Sobre CSALMA (Primero arriba) */}
       <section className="about-editorial section-wrap" id="sobre-csalma" aria-labelledby="about-editorial-title">
         <div className="container">
           <div className="about-editorial-header">
@@ -169,6 +116,65 @@ function AboutPage() {
                 sísmica chilena vigente (<strong>NCh433 / NCh2123</strong>).
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Equipo (3 personas centradas con iconos SVG de WhatsApp y Correo) */}
+      <section className="about-team section-wrap" id="equipo" aria-labelledby="team-title">
+        <div className="container">
+          <header className="about-team-header">
+            <h2 id="team-title">Nuestro Equipo</h2>
+            <p className="about-team-subtitle">
+              Dirección Ejecutiva, Ingeniería y Operaciones en Terreno
+            </p>
+            <p className="about-team-intro">
+              Cada proyecto cuenta con liderazgo técnico y supervisión directa para coordinar las
+              partidas críticas desde la planificación inicial hasta la entrega conforme.
+            </p>
+          </header>
+
+          <div className="about-team-grid">
+            {TEAM_ROLES.map((member) => (
+              <article className="about-team-card" key={member.name}>
+                <div className="about-team-photo" aria-hidden="true">
+                  <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" width="56" height="56">
+                    <circle cx="32" cy="22" r="10" />
+                    <path d="M14 54c0-10 8-16 18-16s18 6 18 16" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div className="about-team-body">
+                  <h3>{member.name}</h3>
+                  <p className="about-team-role">{member.role}</p>
+                  <p className="about-team-bio">{member.bio}</p>
+                  <div className="about-team-links">
+                    <a
+                      href={`mailto:${member.email}`}
+                      className="team-contact-btn"
+                      aria-label={`Enviar correo a ${member.name}`}
+                      title="Enviar correo"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="16" height="16" aria-hidden="true">
+                        <rect x="3" y="5" width="18" height="14" rx="2" />
+                        <path d="m3 7 9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </a>
+                    <a
+                      href={`https://wa.me/56912345678?text=${member.whatsappText}`}
+                      className="team-contact-btn team-contact-btn--wsp"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Contactar por WhatsApp a ${member.name}`}
+                      title="Contactar por WhatsApp"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+                        <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2Zm5.76 14.12c-.24.68-1.4 1.3-1.94 1.38-.5.07-1.13.1-1.82-.12-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.79-4.18-4.93-4.37-.15-.19-1.18-1.57-1.18-2.99 0-1.43.75-2.13 1.01-2.42.27-.29.58-.36.77-.36.19 0 .39 0 .56.01.18.01.42-.07.65.5.24.58.82 2 .89 2.15.07.15.12.32.02.51-.1.19-.14.31-.29.48-.14.17-.31.38-.44.51-.14.14-.3.3-.13.59.17.29.75 1.24 1.62 2.01 1.11.99 2.05 1.3 2.34 1.44.29.15.46.12.63-.07.17-.19.72-.84.91-1.13.19-.29.39-.24.65-.14.27.1 1.69.8 1.98.94.29.14.48.22.55.34.07.12.07.7-.17 1.38Z" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>

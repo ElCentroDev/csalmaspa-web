@@ -26,11 +26,13 @@ function addWireframeEdges(mesh, lineMaterial, sharedEdges) {
 
 function HeroArchitectureScene({ triggerRef, onFallback }) {
   const mountRef = useRef(null)
+  const onFallbackRef = useRef(onFallback)
+  onFallbackRef.current = onFallback
   const [failed, setFailed] = useState(() => !isWebGLAvailable())
 
   useEffect(() => {
     if (failed) {
-      if (onFallback) onFallback()
+      if (onFallbackRef.current) onFallbackRef.current()
       return
     }
     const container = mountRef.current
@@ -45,7 +47,7 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
         powerPreference: 'high-performance',
       })
     } catch {
-      if (onFallback) onFallback()
+      if (onFallbackRef.current) onFallbackRef.current()
       return
     }
 
@@ -91,7 +93,7 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
       if (compactViewport) {
         worldGroup.position.set(0, -0.32, 0)
       } else {
-        worldGroup.position.set(2.55, -0.45, -1.05)
+        worldGroup.position.set(2.75, -0.15, -1.2)
       }
       camera.updateProjectionMatrix()
     }
@@ -398,18 +400,29 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
     resizeObserver.observe(container)
 
     let isVisible = true
+    const checkViewportVisibility = () => {
+      const rect = container.getBoundingClientRect()
+      isVisible = rect.bottom > -80 && rect.top < window.innerHeight + 80
+    }
+    checkViewportVisibility()
+
     const intersectionObserver = new IntersectionObserver(
       ([entry]) => {
         isVisible = entry.isIntersecting
       },
-      { threshold: 0.05 }
+      { rootMargin: '80px 0px', threshold: 0.01 }
     )
     intersectionObserver.observe(container)
+
+    const rafRefreshId = requestAnimationFrame(() => {
+      checkViewportVisibility()
+      ScrollTrigger.refresh()
+    })
 
     const handleContextLost = (e) => {
       e.preventDefault()
       setFailed(true)
-      if (onFallback) onFallback()
+      if (onFallbackRef.current) onFallbackRef.current()
     }
     renderer.domElement.addEventListener('webglcontextlost', handleContextLost)
 
@@ -423,12 +436,12 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
       pointer.x += (pointer.targetX - pointer.x) * 0.05
       pointer.y += (pointer.targetY - pointer.y) * 0.05
 
-      const baseY = compactViewport ? -0.32 : -0.45
+      const baseY = compactViewport ? -0.32 : -0.15
       worldGroup.position.y = baseY + Math.sin(t * 0.7) * 0.05
-      const camBaseX = compactViewport ? 3.2 : 5.0
-      const camBaseY = compactViewport ? 3.8 : 4.35
-      const camBaseZ = compactViewport ? 11.4 : 9.8
-      const lookY = compactViewport ? 1.8 : 1.7
+      const camBaseX = compactViewport ? 3.2 : 4.9
+      const camBaseY = compactViewport ? 3.8 : 4.45
+      const camBaseZ = compactViewport ? 11.4 : 10.5
+      const lookY = compactViewport ? 1.8 : 1.95
 
       camera.position.x = camBaseX + (compactViewport ? 0 : pointer.x * 0.55)
       camera.position.y = camBaseY - (compactViewport ? 0 : pointer.y * 0.35)
@@ -441,6 +454,7 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
 
     return () => {
       cancelAnimationFrame(animId)
+      cancelAnimationFrame(rafRefreshId)
       ctx.revert()
       window.removeEventListener('pointermove', handlePointerMove)
       resizeObserver.disconnect()
@@ -455,12 +469,13 @@ function HeroArchitectureScene({ triggerRef, onFallback }) {
         lineBronze, lineSteel, gridHelper.material,
       ].forEach((m) => m.dispose())
       renderer.dispose()
+      renderer.forceContextLoss()
 
       if (renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement)
       }
     }
-  }, [failed, triggerRef, onFallback])
+  }, [failed, triggerRef])
 
   if (failed) return null
 

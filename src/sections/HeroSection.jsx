@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 
 const HeroArchitectureScene = lazy(() => import('../components/three/HeroArchitectureScene.jsx'))
 
@@ -8,22 +8,6 @@ function HeroSection() {
     if (typeof window === 'undefined') return false
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches
   })
-  const [sceneReady, setSceneReady] = useState(false)
-
-  useEffect(() => {
-    if (webglFallback) return
-    const id = typeof window.requestIdleCallback === 'function'
-      ? window.requestIdleCallback(() => setSceneReady(true), { timeout: 120 })
-      : window.setTimeout(() => setSceneReady(true), 40)
-
-    return () => {
-      if (typeof window.cancelIdleCallback === 'function') {
-        window.cancelIdleCallback(id)
-      } else {
-        window.clearTimeout(id)
-      }
-    }
-  }, [webglFallback])
 
   return (
     <section
@@ -68,15 +52,9 @@ function HeroSection() {
             Solicitar cotización <span aria-hidden="true">↗</span>
           </a>
         </div>
-
-        <div className="hero-specs" aria-label="Estándares técnicos">
-          <span>NCh433 · Norma Sísmica</span>
-          <span>Supervisión Residente</span>
-          <span>Santiago · Chile</span>
-        </div>
       </div>
 
-      {!webglFallback && sceneReady && (
+      {!webglFallback && (
         <Suspense fallback={null}>
           <HeroArchitectureScene
             triggerRef={heroRef}
