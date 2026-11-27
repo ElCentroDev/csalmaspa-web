@@ -30,3 +30,4 @@ dist-ssr
 .env.*
 !.env.example
 public/api/config.smtp.php
+.env.test.local

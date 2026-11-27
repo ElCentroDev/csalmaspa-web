@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 
+const currentYear = new Date().getFullYear()
+
 function Footer() {
-  const year = new Date().getFullYear()
   return (
     <footer className="site-footer" role="contentinfo">
       <div className="container">
@@ -68,7 +69,7 @@ function Footer() {
 
         <div className="footer-bottom">
           <p className="footer-copy">
-            © {year} Construcciones CSALMA SPA · Todos los derechos reservados ·{' '}
+            © {currentYear} Construcciones CSALMA SPA · Todos los derechos reservados ·{' '}
             <Link to="/privacidad" style={{ textDecoration: 'underline' }}>
               Política de Privacidad (Ley N° 19.628)
             </Link>

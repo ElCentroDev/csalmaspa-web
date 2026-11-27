@@ -22,8 +22,8 @@ function ContactSection() {
     empresa: '',
     email: '',
     telefono: '',
-    servicio: '',
-    mensaje: '',
+    especialidad: '',
+    detalle: '',
     consentimiento: false,
     website_trap: '', // Honeypot anti-bot invisible
   })
@@ -47,7 +47,7 @@ function ContactSection() {
     setErrorMessage('')
 
     // Validación básica en cliente
-    if (!formData.nombre.trim() || !formData.email.trim() || !formData.mensaje.trim()) {
+    if (!formData.nombre.trim() || !formData.email.trim() || !formData.telefono.trim() || !formData.detalle.trim()) {
       setErrorMessage('Por favor complete todos los campos obligatorios.')
       return
     }
@@ -60,7 +60,7 @@ function ContactSection() {
     setStatus('loading')
 
     try {
-      const response = await fetch('/api/contact.php', {
+      const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,10 +77,9 @@ function ContactSection() {
         setStatus('error')
         setErrorMessage(result.error || 'Ocurrió un error al enviar su solicitud. Por favor intente más tarde o contáctenos por WhatsApp.')
       }
-    } catch (err) {
-      // Si estamos en entorno local de Vite sin backend PHP activo, mostrar mensaje orientativo
+    } catch {
       setStatus('error')
-      setErrorMessage('No se pudo establecer conexión con el servidor de correo. En producción en Lightsail el endpoint procesará el envío.')
+      setErrorMessage('No se pudo conectar con el servidor. Por favor intente más tarde.')
     }
   }
 
@@ -196,8 +195,8 @@ function ContactSection() {
                       empresa: '',
                       email: '',
                       telefono: '',
-                      servicio: '',
-                      mensaje: '',
+                      especialidad: '',
+                      detalle: '',
                       consentimiento: false,
                       website_trap: '',
                     })
@@ -280,14 +279,17 @@ function ContactSection() {
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="cf-telefono">
-                      Teléfono Móvil
+                      Teléfono Móvil *
                     </label>
                     <input
                       id="cf-telefono"
                       name="telefono"
                       type="tel"
+                      required
                       className="form-input"
                       placeholder="+56 9 XXXX XXXX"
+                      pattern="\+56\s?9(\s?\d){8}"
+                      title="Use el formato +56 9 XXXX XXXX"
                       maxLength={30}
                       autoComplete="tel"
                       value={formData.telefono}
@@ -297,33 +299,33 @@ function ContactSection() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="cf-servicio">
+                  <label className="form-label" htmlFor="cf-especialidad">
                     Tipo de Obra o Especialidad
                   </label>
                   <input
-                    id="cf-servicio"
-                    name="servicio"
+                    id="cf-especialidad"
+                    name="especialidad"
                     type="text"
                     className="form-input"
                     placeholder="Ej: Fundaciones, Obras Civiles, Estructura de Hormigón"
                     maxLength={150}
-                    value={formData.servicio}
+                    value={formData.especialidad}
                     onChange={handleChange}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="cf-mensaje">
+                  <label className="form-label" htmlFor="cf-detalle">
                     Detalle del Requerimiento / Ubicación *
                   </label>
                   <textarea
-                    id="cf-mensaje"
-                    name="mensaje"
+                    id="cf-detalle"
+                    name="detalle"
                     className="form-textarea"
                     placeholder="Describa el alcance de la obra, ubicación estimada, plazos y cualquier especificación técnica relevante..."
                     required
                     maxLength={3000}
-                    value={formData.mensaje}
+                    value={formData.detalle}
                     onChange={handleChange}
                   />
                 </div>

@@ -27,8 +27,11 @@ function addWireframeEdges(mesh, lineMaterial, sharedEdges) {
 function HeroArchitectureScene({ triggerRef, onFallback }) {
   const mountRef = useRef(null)
   const onFallbackRef = useRef(onFallback)
-  onFallbackRef.current = onFallback
   const [failed, setFailed] = useState(() => !isWebGLAvailable())
+
+  useEffect(() => {
+    onFallbackRef.current = onFallback
+  }, [onFallback])
 
   useEffect(() => {
     if (failed) {
