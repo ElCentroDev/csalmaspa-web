@@ -354,14 +354,14 @@ function AdminUsersModule({ onDataChanged }) {
 
             <div className="admin-field">
               <label htmlFor="wp-user-password">
-                {editingId ? 'Nueva contraseña (opcional)' : 'Contraseña (mín. 8 caracteres)'}
+                {editingId ? 'Nueva contraseña (opcional, mín. 6 caracteres)' : 'Contraseña (mín. 6 caracteres)'}
               </label>
               <input
                 id="wp-user-password"
                 name="password"
                 type="password"
                 className="admin-input"
-                minLength={8}
+                minLength={6}
                 maxLength={128}
                 placeholder={editingId ? 'Vacío para mantener actual' : 'Se cifra con scrypt'}
                 value={form.password}
@@ -376,7 +376,7 @@ function AdminUsersModule({ onDataChanged }) {
           </p>
 
           <div className="admin-form-footer">
-            <span className="admin-field-note">El inicio de sesión usará estos usuarios cuando se habilite.</span>
+            <span className="admin-field-note">Las cuentas activas con rol asignado pueden iniciar sesión en /admin.</span>
             <button type="submit" className="admin-btn admin-btn--primary" disabled={saving}>
               {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Agregar usuario'}
             </button>

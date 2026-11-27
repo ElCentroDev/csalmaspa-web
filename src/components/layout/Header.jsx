@@ -1,10 +1,28 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false)
   const { pathname, hash } = useLocation()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch('/api/auth/status', {
+      credentials: 'same-origin',
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        setIsAdminLoggedIn(Boolean(data?.authenticated))
+      })
+      .catch(() => {
+        setIsAdminLoggedIn(false)
+      })
+
+    return () => controller.abort()
+  }, [pathname])
 
   const closeMenu = () => setMenuOpen(false)
 
@@ -63,6 +81,27 @@ function Header() {
           >
             Cotizar
           </a>
+          {isAdminLoggedIn ? (
+            <Link to="/admin" className="nav-admin-btn" onClick={closeMenu}>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="3" y="3" width="7" height="9" rx="1" />
+                <rect x="14" y="3" width="7" height="5" rx="1" />
+                <rect x="14" y="12" width="7" height="9" rx="1" />
+                <rect x="3" y="16" width="7" height="5" rx="1" />
+              </svg>
+              Panel Admin
+            </Link>
+          ) : null}
         </nav>
 
         <button

@@ -4,8 +4,10 @@ import { openDatabase } from './db.js'
 import { createActivityRepository } from './repositories/activityRepository.js'
 import { createProjectsRepository } from './repositories/projectsRepository.js'
 import { createRequestsRepository } from './repositories/requestsRepository.js'
+import { createSessionsRepository } from './repositories/sessionsRepository.js'
 import { createUsersRepository } from './repositories/usersRepository.js'
 import adminRoutes from './routes/admin.js'
+import authRoutes from './routes/auth.js'
 import contactRoutes from './routes/contact.js'
 import projectsPublicRoutes from './routes/projectsPublic.js'
 import { createFileExplorerService } from './services/fileExplorerService.js'
@@ -21,12 +23,27 @@ export function buildApp({
   db,
   mailService = createMailService(appConfig),
   enableMonitor = appConfig.monitor.enabled,
+  seedInitialAdmin = true,
 } = {}) {
   const database = db || openDatabase(appConfig.storage.databaseFile)
   const requestsRepo = createRequestsRepository(database)
   const projectsRepo = createProjectsRepository(database)
   const activityRepo = createActivityRepository(database)
   const usersRepo = createUsersRepository(database)
+  const sessionsRepo = createSessionsRepository(database, {
+    ttlHours: appConfig.auth.sessionTtlHours,
+    defaultAdminPassword: appConfig.auth.initialAdminPassword,
+  })
+
+  if (seedInitialAdmin) {
+    usersRepo.ensureInitialAdmin({
+      username: appConfig.auth.initialAdminUser,
+      password: appConfig.auth.initialAdminPassword,
+      nombre: 'Administrador CSALMA',
+      email: appConfig.auth.initialAdminEmail,
+    })
+  }
+
   const uploadService = createUploadService(appConfig.storage.uploadsDir)
   const systemInfoService = createSystemInfoService({
     dataDir: appConfig.storage.dataDir,
@@ -106,6 +123,7 @@ export function buildApp({
 
   app.register(contactRoutes, { config: appConfig, mailService, requestsRepo, activityRepo })
   app.register(projectsPublicRoutes, { projectsRepo, uploadService })
+  app.register(authRoutes, { config: appConfig, usersRepo, sessionsRepo, activityRepo })
   app.register(adminRoutes, {
     config: appConfig,
     mailService,
@@ -114,6 +132,7 @@ export function buildApp({
     uploadService,
     activityRepo,
     usersRepo,
+    sessionsRepo,
     systemInfoService,
     uptimeMonitor,
     fileExplorerService,

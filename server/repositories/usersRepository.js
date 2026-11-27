@@ -31,7 +31,23 @@ export function hashPassword(password) {
   return `scrypt$${salt}$${derived}`
 }
 
-function sanitize(row) {
+export function verifyPassword(password, storedHash) {
+  if (!password || typeof storedHash !== 'string') return false
+  const parts = storedHash.split('$')
+  if (parts.length !== 3 || parts[0] !== 'scrypt') return false
+  const [, salt, hexHash] = parts
+  if (!salt || !hexHash) return false
+  try {
+    const expected = Buffer.from(hexHash, 'hex')
+    const actual = crypto.scryptSync(String(password), salt, expected.length)
+    if (actual.length !== expected.length) return false
+    return crypto.timingSafeEqual(actual, expected)
+  } catch {
+    return false
+  }
+}
+
+export function sanitizeUser(row) {
   if (!row) return null
   return {
     id: row.id,
@@ -60,7 +76,14 @@ function isUniqueError(error) {
 
 export function createUsersRepository(db) {
   const statements = {
+    totalCount: db.prepare('SELECT COUNT(*) AS total FROM usuarios'),
+    countActiveAdmins: db.prepare(
+      "SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'administrador' AND estado = 'activo' AND id != ?",
+    ),
     findById: db.prepare('SELECT * FROM usuarios WHERE id = ?'),
+    findAuthByIdentifier: db.prepare(
+      'SELECT * FROM usuarios WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) LIMIT 1',
+    ),
     usernameTaken: db.prepare('SELECT id FROM usuarios WHERE LOWER(username) = LOWER(?) AND id != ?'),
     insert: db.prepare(`INSERT INTO usuarios
       (username, nombre, email, rol, estado, password_hash, created_at, updated_at)
@@ -73,6 +96,7 @@ export function createUsersRepository(db) {
       SET username = :username, nombre = :nombre, email = :email, rol = :rol, estado = :estado,
           updated_at = :at
       WHERE id = :id`),
+    touchLogin: db.prepare('UPDATE usuarios SET ultimo_acceso = ? WHERE id = ?'),
     remove: db.prepare('DELETE FROM usuarios WHERE id = ?'),
     byRole: db.prepare('SELECT rol, COUNT(*) AS total FROM usuarios GROUP BY rol'),
     byState: db.prepare('SELECT estado, COUNT(*) AS total FROM usuarios GROUP BY estado'),
@@ -96,7 +120,7 @@ export function createUsersRepository(db) {
       const rows = db
         .prepare(`SELECT * FROM usuarios ${clause} ORDER BY ${orderExpr} ${dir}, id DESC LIMIT 500`)
         .all(params)
-      return rows.map(sanitize)
+      return rows.map(sanitizeUser)
     },
 
     counts() {
@@ -117,8 +141,35 @@ export function createUsersRepository(db) {
       return counts
     },
 
+    countActiveAdmins(excludeId = 0) {
+      return Number(statements.countActiveAdmins.get(excludeId).total)
+    },
+
     findById(id) {
-      return sanitize(statements.findById.get(id))
+      return sanitizeUser(statements.findById.get(id))
+    },
+
+    findAuthByIdentifier(identifier) {
+      const clean = String(identifier || '').trim()
+      if (!clean) return null
+      return statements.findAuthByIdentifier.get(clean, clean) || null
+    },
+
+    touchLastLogin(id) {
+      statements.touchLogin.run(now(), id)
+    },
+
+    ensureInitialAdmin({ username = 'admin', password = 'admin', nombre = 'Administrador CSALMA', email = 'admin@csalma.cl' } = {}) {
+      const total = Number(statements.totalCount.get().total)
+      if (total > 0) return null
+      return this.create({
+        username,
+        nombre,
+        email,
+        rol: 'administrador',
+        estado: 'activo',
+        password,
+      })
     },
 
     create({ username, nombre, email, rol, estado = 'activo', password = '' }) {

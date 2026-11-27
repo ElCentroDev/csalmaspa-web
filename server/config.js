@@ -52,4 +52,10 @@ export const config = {
         ? process.env.ADMIN_FILES_WRITE === 'true'
         : process.env.ADMIN_ALLOW_REMOTE !== 'true',
   },
+  auth: {
+    sessionTtlHours: Number(process.env.SESSION_TTL_HOURS || 168),
+    initialAdminUser: process.env.INITIAL_ADMIN_USER || 'admin',
+    initialAdminPassword: process.env.INITIAL_ADMIN_PASSWORD || 'admin',
+    initialAdminEmail: process.env.INITIAL_ADMIN_EMAIL || 'admin@csalma.cl',
+  },
 }

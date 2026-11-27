@@ -80,6 +80,16 @@ const MIGRATIONS = [
     error TEXT NOT NULL DEFAULT ''
   )`,
   'CREATE INDEX IF NOT EXISTS idx_health_checked ON health_checks (checked_at DESC)',
+  `CREATE TABLE IF NOT EXISTS sesiones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_hash TEXT NOT NULL UNIQUE,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios (id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    ip_hash TEXT NOT NULL DEFAULT ''
+  )`,
+  'CREATE INDEX IF NOT EXISTS idx_sesiones_usuario ON sesiones (usuario_id)',
+  'CREATE INDEX IF NOT EXISTS idx_sesiones_expires ON sesiones (expires_at)',
 ]
 
 function ensureColumn(db, table, column, definition) {

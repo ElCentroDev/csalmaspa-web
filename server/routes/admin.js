@@ -1,7 +1,7 @@
 import { REQUEST_STATES } from '../repositories/requestsRepository.js'
+import { parseCookies, SESSION_COOKIE_NAME } from '../repositories/sessionsRepository.js'
 import { USER_ROLES, USER_STATES } from '../repositories/usersRepository.js'
 
-const LOOPBACK_IPS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const VALID_SORT_BY = new Set(['username', 'nombre', 'email', 'rol', 'created_at'])
 const VALID_SORT_DIR = new Set(['asc', 'desc'])
@@ -185,6 +185,15 @@ function collectProjectUrls(project) {
   return [...urls]
 }
 
+function requirePerm(request, reply, checkFn) {
+  if (checkFn(request.adminPermissions)) return true
+  reply.code(403).send({
+    success: false,
+    error: 'No tienes permisos para realizar esta acción.',
+  })
+  return false
+}
+
 export default async function adminRoutes(
   fastify,
   {
@@ -195,36 +204,54 @@ export default async function adminRoutes(
     uploadService,
     activityRepo,
     usersRepo,
+    sessionsRepo,
     systemInfoService,
     uptimeMonitor,
     fileExplorerService,
   },
 ) {
-  const logActivity = (entry) => {
-    if (activityRepo) activityRepo.record(entry)
+  const logActivity = (request, entry) => {
+    if (!activityRepo) return
+    const actor = request.adminUser
+      ? `${request.adminUser.nombre} (@${request.adminUser.username})`
+      : 'Panel Admin'
+    activityRepo.record({ ...entry, actor })
   }
 
   fastify.addHook('preHandler', async (request, reply) => {
     reply.header('Cache-Control', 'no-store')
     reply.header('X-Robots-Tag', 'noindex, nofollow')
 
-    if (!config.admin.allowRemote && !LOOPBACK_IPS.has(request.ip)) {
-      return reply.code(403).send({
+    const cookies = parseCookies(request.headers.cookie)
+    const token = cookies[SESSION_COOKIE_NAME]
+    const session = sessionsRepo.findValidSession(token)
+
+    if (!session) {
+      return reply.code(401).send({
         success: false,
-        error: 'Acceso administrativo restringido al entorno local mientras se habilita el inicio de sesión.',
+        error: 'Sesión requerida. Inicie sesión para continuar.',
       })
     }
+
+    request.adminUser = session.user
+    request.adminPermissions = session.permissions
+    request.sessionTokenHash = session.tokenHash
   })
 
-  fastify.get('/api/admin/overview', async () => {
+  fastify.get('/api/admin/overview', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.modules.includes('escritorio'))) return
+
+    const canViewSystem = request.adminPermissions.canViewSystem
+    const canSeeRequests = request.adminPermissions.modules.includes('solicitudes')
+
     return {
       smtp: {
         transport: config.mailTransport,
         configured: mailService.isSmtpConfigured,
-        host: config.smtp.host,
-        port: config.smtp.port,
-        contactTo: config.recipients.default,
-        mailFrom: config.mailFrom,
+        host: canViewSystem ? config.smtp.host : '',
+        port: canViewSystem ? config.smtp.port : 0,
+        contactTo: canViewSystem ? config.recipients.default : [],
+        mailFrom: canViewSystem ? config.mailFrom : '',
       },
       admin: {
         allowRemote: config.admin.allowRemote,
@@ -232,14 +259,15 @@ export default async function adminRoutes(
       solicitudes: requestsRepo.counts(),
       proyectos: projectsRepo.counts(),
       usuarios: usersRepo.counts(),
-      recientes: requestsRepo.latest(5),
-      system: systemInfoService.getSnapshot(),
+      recientes: canSeeRequests ? requestsRepo.latest(5) : [],
+      system: canViewSystem ? systemInfoService.getSnapshot() : null,
       uptime: uptimeMonitor.getSummary(),
       actividad: activityRepo.list(15),
     }
   })
 
-  fastify.post('/api/admin/uptime/check', async () => {
+  fastify.post('/api/admin/uptime/check', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canRunUptimeCheck)) return
     const check = await uptimeMonitor.runCheck()
     return {
       check,
@@ -248,6 +276,8 @@ export default async function adminRoutes(
   })
 
   fastify.get('/api/admin/solicitudes', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.modules.includes('solicitudes'))) return
+
     const rawEstado = typeof request.query?.estado === 'string' ? request.query.estado.trim() : ''
     const rawQ = typeof request.query?.q === 'string' ? request.query.q.trim() : ''
 
@@ -265,17 +295,23 @@ export default async function adminRoutes(
   })
 
   fastify.get('/api/admin/solicitudes/:id', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.modules.includes('solicitudes'))) return
+
     const id = parseId(request.params.id)
     if (!id) return reply.code(400).send({ success: false, error: 'Identificador inválido.' })
 
     const existing = requestsRepo.findById(id)
     if (!existing) return reply.code(404).send({ success: false, error: 'Solicitud no encontrada.' })
 
-    requestsRepo.markRead(id)
+    if (request.adminPermissions.canManageRequests) {
+      requestsRepo.markRead(id)
+    }
     return { item: requestsRepo.findWithReplies(id) }
   })
 
   fastify.patch('/api/admin/solicitudes/:id', { schema: patchRequestSchema }, async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canManageRequests)) return
+
     const id = parseId(request.params.id)
     if (!id) return reply.code(400).send({ success: false, error: 'Identificador inválido.' })
 
@@ -283,7 +319,7 @@ export default async function adminRoutes(
     if (!existing) return reply.code(404).send({ success: false, error: 'Solicitud no encontrada.' })
 
     requestsRepo.update(id, request.body)
-    logActivity({
+    logActivity(request, {
       modulo: 'solicitudes',
       accion: 'actualizar_solicitud',
       descripcion: `Actualizó seguimiento de ${existing.nombre}${request.body.estado ? ` (${request.body.estado})` : ''}.`,
@@ -292,6 +328,8 @@ export default async function adminRoutes(
   })
 
   fastify.post('/api/admin/solicitudes/:id/reply', { schema: replyRequestSchema }, async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canManageRequests)) return
+
     const id = parseId(request.params.id)
     if (!id) return reply.code(400).send({ success: false, error: 'Identificador inválido.' })
 
@@ -315,7 +353,7 @@ export default async function adminRoutes(
 
       const envioEstado = config.mailTransport === 'smtp' ? 'enviado' : 'simulado'
       requestsRepo.addReply({ solicitudId: id, asunto, mensaje, envioEstado })
-      logActivity({
+      logActivity(request, {
         modulo: 'solicitudes',
         accion: 'responder_solicitud',
         descripcion: `Respondió cotización a ${existing.nombre} (${envioEstado}).`,
@@ -335,7 +373,7 @@ export default async function adminRoutes(
         envioEstado: 'error',
         error: error?.message || 'Error desconocido de SMTP',
       })
-      logActivity({
+      logActivity(request, {
         modulo: 'solicitudes',
         accion: 'error_respuesta',
         descripcion: `Error al responder por SMTP a ${existing.nombre}.`,
@@ -350,6 +388,8 @@ export default async function adminRoutes(
   })
 
   fastify.delete('/api/admin/solicitudes/:id', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canDeleteRequests)) return
+
     const id = parseId(request.params.id)
     if (!id) return reply.code(400).send({ success: false, error: 'Identificador inválido.' })
 
@@ -357,7 +397,7 @@ export default async function adminRoutes(
     if (!existing) return reply.code(404).send({ success: false, error: 'Solicitud no encontrada.' })
 
     requestsRepo.remove(id)
-    logActivity({
+    logActivity(request, {
       modulo: 'solicitudes',
       accion: 'eliminar_solicitud',
       descripcion: `Eliminó la solicitud de ${existing.nombre} (#${id}).`,
@@ -365,7 +405,9 @@ export default async function adminRoutes(
     return { success: true }
   })
 
-  fastify.get('/api/admin/proyectos', async () => {
+  fastify.get('/api/admin/proyectos', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.modules.includes('proyectos'))) return
+
     return {
       items: projectsRepo.list(),
       counts: projectsRepo.counts(),
@@ -373,7 +415,13 @@ export default async function adminRoutes(
   })
 
   fastify.post('/api/admin/proyectos', { schema: projectBodySchema }, async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canEditProjects)) return
+
     const data = normalizeProjectPayload(request.body)
+    if (!request.adminPermissions.canPublishProjects) {
+      data.publicado = false
+    }
+
     if (!data.titulo || !data.resumen) {
       return reply.code(400).send({ success: false, error: 'El título y el resumen son obligatorios.' })
     }
@@ -382,7 +430,7 @@ export default async function adminRoutes(
     }
 
     const item = projectsRepo.create(data)
-    logActivity({
+    logActivity(request, {
       modulo: 'proyectos',
       accion: data.publicado ? 'publicar_proyecto' : 'crear_borrador',
       descripcion: `${data.publicado ? 'Publicó' : 'Creó en borrador'} el proyecto "${item.titulo}".`,
@@ -391,6 +439,8 @@ export default async function adminRoutes(
   })
 
   fastify.put('/api/admin/proyectos/:id', { schema: projectBodySchema }, async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canEditProjects)) return
+
     const id = parseId(request.params.id)
     if (!id) return reply.code(400).send({ success: false, error: 'Identificador inválido.' })
 
@@ -398,6 +448,10 @@ export default async function adminRoutes(
     if (!existing) return reply.code(404).send({ success: false, error: 'Proyecto no encontrado.' })
 
     const data = normalizeProjectPayload(request.body)
+    if (!request.adminPermissions.canPublishProjects) {
+      data.publicado = Boolean(existing.publicado)
+    }
+
     if (!data.titulo || !data.resumen) {
       return reply.code(400).send({ success: false, error: 'El título y el resumen son obligatorios.' })
     }
@@ -414,7 +468,7 @@ export default async function adminRoutes(
       }
     }
 
-    logActivity({
+    logActivity(request, {
       modulo: 'proyectos',
       accion: 'actualizar_proyecto',
       descripcion: `Actualizó el proyecto "${item.titulo}" (${item.publicado ? 'Publicado' : 'Borrador'}).`,
@@ -423,6 +477,8 @@ export default async function adminRoutes(
   })
 
   fastify.delete('/api/admin/proyectos/:id', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canDeleteProjects)) return
+
     const id = parseId(request.params.id)
     if (!id) return reply.code(400).send({ success: false, error: 'Identificador inválido.' })
 
@@ -435,7 +491,7 @@ export default async function adminRoutes(
       uploadService.removeIfUnused(url, projectsRepo)
     }
 
-    logActivity({
+    logActivity(request, {
       modulo: 'proyectos',
       accion: 'eliminar_proyecto',
       descripcion: `Eliminó el proyecto "${existing.titulo}".`,
@@ -447,12 +503,15 @@ export default async function adminRoutes(
     '/api/admin/uploads',
     { bodyLimit: 8 * 1024 * 1024, schema: uploadBodySchema },
     async (request, reply) => {
+      if (!requirePerm(request, reply, (p) => p.canEditProjects)) return
       const result = uploadService.saveImage(request.body)
       return reply.code(201).send(result)
     },
   )
 
   fastify.get('/api/admin/users', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canManageUsers)) return
+
     const rawRol = typeof request.query?.rol === 'string' ? request.query.rol.trim() : ''
     const rawQ = typeof request.query?.q === 'string' ? request.query.q.trim() : ''
     const rawSortBy = typeof request.query?.sortBy === 'string' ? request.query.sortBy.trim() : 'username'
@@ -476,6 +535,8 @@ export default async function adminRoutes(
   })
 
   fastify.post('/api/admin/users', { schema: userBodySchema }, async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canManageUsers)) return
+
     const username = String(request.body.username || '').trim()
     const nombre = String(request.body.nombre || '').trim()
     const email = String(request.body.email || '').trim().toLowerCase()
@@ -486,12 +547,12 @@ export default async function adminRoutes(
     if (!nombre || !emailPattern.test(email)) {
       return reply.code(400).send({ success: false, error: 'Debe ingresar nombre y un correo válido.' })
     }
-    if (password && password.length < 8) {
-      return reply.code(400).send({ success: false, error: 'La contraseña debe tener al menos 8 caracteres.' })
+    if (password && password.length < 6) {
+      return reply.code(400).send({ success: false, error: 'La contraseña debe tener al menos 6 caracteres.' })
     }
 
     const item = usersRepo.create({ username, nombre, email, rol, estado, password })
-    logActivity({
+    logActivity(request, {
       modulo: 'usuarios',
       accion: 'crear_usuario',
       descripcion: `Creó al usuario @${item.username} (${item.rol}).`,
@@ -500,8 +561,13 @@ export default async function adminRoutes(
   })
 
   fastify.put('/api/admin/users/:id', { schema: userBodySchema }, async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canManageUsers)) return
+
     const id = parseId(request.params.id)
     if (!id) return reply.code(400).send({ success: false, error: 'Identificador inválido.' })
+
+    const existing = usersRepo.findById(id)
+    if (!existing) return reply.code(404).send({ success: false, error: 'Usuario no encontrado.' })
 
     const username = String(request.body.username || '').trim()
     const nombre = String(request.body.nombre || '').trim()
@@ -513,14 +579,33 @@ export default async function adminRoutes(
     if (!nombre || !emailPattern.test(email)) {
       return reply.code(400).send({ success: false, error: 'Debe ingresar nombre y un correo válido.' })
     }
-    if (password && password.length < 8) {
-      return reply.code(400).send({ success: false, error: 'La contraseña debe tener al menos 8 caracteres.' })
+    if (password && password.length < 6) {
+      return reply.code(400).send({ success: false, error: 'La contraseña debe tener al menos 6 caracteres.' })
+    }
+
+    if (
+      existing.rol === 'administrador' &&
+      existing.estado === 'activo' &&
+      (rol !== 'administrador' || estado !== 'activo') &&
+      usersRepo.countActiveAdmins(id) === 0
+    ) {
+      return reply.code(400).send({
+        success: false,
+        error: 'Debe existir al menos un usuario administrador activo.',
+      })
     }
 
     const item = usersRepo.update(id, { username, nombre, email, rol, estado, password })
-    if (!item) return reply.code(404).send({ success: false, error: 'Usuario no encontrado.' })
 
-    logActivity({
+    if (estado !== 'activo' || rol === 'ninguno') {
+      sessionsRepo.revokeAllForUser(id)
+    } else if (password) {
+      sessionsRepo.revokeAllForUser(id, {
+        exceptTokenHash: id === request.adminUser.id ? request.sessionTokenHash : undefined,
+      })
+    }
+
+    logActivity(request, {
       modulo: 'usuarios',
       accion: 'actualizar_usuario',
       descripcion: `Actualizó al usuario @${item.username} (${item.rol}, ${item.estado}).`,
@@ -529,14 +614,37 @@ export default async function adminRoutes(
   })
 
   fastify.post('/api/admin/users/bulk', { schema: userBulkSchema }, async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canManageUsers)) return
+
     const { action, ids, rol, estado } = request.body
     const uniqueIds = [...new Set(ids)]
+    const allUsers = usersRepo.list({})
+    const targetSet = new Set(uniqueIds)
+    const remainingActiveAdmins = allUsers.filter(
+      (u) => !targetSet.has(u.id) && u.rol === 'administrador' && u.estado === 'activo',
+    ).length
+
+    const threatensLastAdmin =
+      action === 'delete' ||
+      (action === 'set_role' && rol !== 'administrador') ||
+      (action === 'set_state' && estado !== 'activo')
+
+    if (threatensLastAdmin && remainingActiveAdmins === 0) {
+      return reply.code(400).send({
+        success: false,
+        error: 'Debe existir al menos un usuario administrador activo.',
+      })
+    }
+
     let affected = 0
 
     if (action === 'set_role') {
       if (!rol) return reply.code(400).send({ success: false, error: 'Debe seleccionar una función para aplicar.' })
       affected = usersRepo.bulkUpdateRole(uniqueIds, rol)
-      logActivity({
+      if (rol === 'ninguno') {
+        for (const uid of uniqueIds) sessionsRepo.revokeAllForUser(uid)
+      }
+      logActivity(request, {
         modulo: 'usuarios',
         accion: 'cambio_masivo_rol',
         descripcion: `Cambió la función a "${rol}" en ${affected} usuario(s).`,
@@ -544,14 +652,17 @@ export default async function adminRoutes(
     } else if (action === 'set_state') {
       if (!estado) return reply.code(400).send({ success: false, error: 'Debe indicar el estado a aplicar.' })
       affected = usersRepo.bulkUpdateState(uniqueIds, estado)
-      logActivity({
+      if (estado !== 'activo') {
+        for (const uid of uniqueIds) sessionsRepo.revokeAllForUser(uid)
+      }
+      logActivity(request, {
         modulo: 'usuarios',
         accion: 'cambio_masivo_estado',
         descripcion: `Marcó como ${estado} a ${affected} usuario(s).`,
       })
     } else if (action === 'delete') {
       affected = usersRepo.bulkRemove(uniqueIds)
-      logActivity({
+      logActivity(request, {
         modulo: 'usuarios',
         accion: 'eliminar_masivo_usuarios',
         descripcion: `Eliminó ${affected} usuario(s) de forma masiva.`,
@@ -566,14 +677,27 @@ export default async function adminRoutes(
   })
 
   fastify.delete('/api/admin/users/:id', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canManageUsers)) return
+
     const id = parseId(request.params.id)
     if (!id) return reply.code(400).send({ success: false, error: 'Identificador inválido.' })
 
     const existing = usersRepo.findById(id)
     if (!existing) return reply.code(404).send({ success: false, error: 'Usuario no encontrado.' })
 
+    if (
+      existing.rol === 'administrador' &&
+      existing.estado === 'activo' &&
+      usersRepo.countActiveAdmins(id) === 0
+    ) {
+      return reply.code(400).send({
+        success: false,
+        error: 'Debe existir al menos un usuario administrador activo.',
+      })
+    }
+
     usersRepo.remove(id)
-    logActivity({
+    logActivity(request, {
       modulo: 'usuarios',
       accion: 'eliminar_usuario',
       descripcion: `Eliminó al usuario @${existing.username} (${existing.email}).`,
@@ -581,17 +705,20 @@ export default async function adminRoutes(
     return { success: true }
   })
 
-  fastify.get('/api/admin/files/roots', async () => {
+  fastify.get('/api/admin/files/roots', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canAccessFiles)) return
     return { roots: fileExplorerService.getRoots() }
   })
 
-  fastify.get('/api/admin/files/tree', async (request) => {
+  fastify.get('/api/admin/files/tree', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canAccessFiles)) return
     const root = typeof request.query?.root === 'string' ? request.query.root : 'project'
     const relPath = typeof request.query?.path === 'string' ? request.query.path : ''
     return fileExplorerService.listDirectory(root, relPath)
   })
 
-  fastify.get('/api/admin/files/preview', async (request) => {
+  fastify.get('/api/admin/files/preview', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canAccessFiles)) return
     const root = typeof request.query?.root === 'string' ? request.query.root : 'project'
     const relPath = typeof request.query?.path === 'string' ? request.query.path : ''
     return fileExplorerService.previewFile(root, relPath)
@@ -600,10 +727,11 @@ export default async function adminRoutes(
   fastify.put(
     '/api/admin/files/content',
     { bodyLimit: 1024 * 1024, schema: fileWriteSchema },
-    async (request) => {
+    async (request, reply) => {
+      if (!requirePerm(request, reply, (p) => p.canWriteFiles)) return
       const { root, path: relPath, content } = request.body
       const file = fileExplorerService.writeFile(root, relPath, content)
-      logActivity({
+      logActivity(request, {
         modulo: 'archivos',
         accion: 'editar_archivo',
         descripcion: `Guardó cambios en ${file.path} desde el editor IDE.`,
@@ -616,9 +744,10 @@ export default async function adminRoutes(
     '/api/admin/files/create',
     { bodyLimit: 1024 * 1024, schema: fileCreateSchema },
     async (request, reply) => {
+      if (!requirePerm(request, reply, (p) => p.canWriteFiles)) return
       const { root, path: relPath, type, content = '' } = request.body
       const entry = fileExplorerService.createEntry(root, relPath, type, content)
-      logActivity({
+      logActivity(request, {
         modulo: 'archivos',
         accion: type === 'dir' ? 'crear_carpeta' : 'crear_archivo',
         descripcion: `Creó ${type === 'dir' ? 'la carpeta' : 'el archivo'} ${entry.path} desde el IDE.`,
@@ -627,11 +756,12 @@ export default async function adminRoutes(
     },
   )
 
-  fastify.delete('/api/admin/files/entry', async (request) => {
+  fastify.delete('/api/admin/files/entry', async (request, reply) => {
+    if (!requirePerm(request, reply, (p) => p.canWriteFiles)) return
     const root = typeof request.query?.root === 'string' ? request.query.root : 'project'
     const relPath = typeof request.query?.path === 'string' ? request.query.path : ''
     fileExplorerService.deleteEntry(root, relPath)
-    logActivity({
+    logActivity(request, {
       modulo: 'archivos',
       accion: 'eliminar_archivo',
       descripcion: `Eliminó ${relPath} desde el editor IDE.`,

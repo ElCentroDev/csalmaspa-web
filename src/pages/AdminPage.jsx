@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AdminFilesModule from '../components/admin/AdminFilesModule.jsx'
+import AdminLoginScreen from '../components/admin/AdminLoginScreen.jsx'
 import AdminOverview from '../components/admin/AdminOverview.jsx'
 import AdminProjectsModule from '../components/admin/AdminProjectsModule.jsx'
 import AdminRequestsModule from '../components/admin/AdminRequestsModule.jsx'
@@ -8,6 +9,24 @@ import AdminSmtpPanel from '../components/admin/AdminSmtpPanel.jsx'
 import AdminUsersModule from '../components/admin/AdminUsersModule.jsx'
 import { adminApi } from '../components/admin/adminApi.js'
 import '../styles/admin.css'
+
+const ROLE_LABELS = {
+  administrador: 'Administrador',
+  editor: 'Editor',
+  autor: 'Autor',
+  colaborador: 'Colaborador',
+  lector: 'Lector',
+  ninguno: 'Sin rol',
+}
+
+function getInitials(name) {
+  return String(name || 'AD')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('')
+}
 
 function NavIcon({ name }) {
   const common = {
@@ -108,11 +127,11 @@ const MODULE_TITLES = {
   },
   usuarios: {
     title: 'Usuarios y Roles',
-    subtitle: 'Administra cuentas del equipo y asigna permisos por rol al estilo WordPress.',
+    subtitle: 'Administra cuentas del equipo, contraseñas y permisos por rol al estilo WordPress.',
   },
   archivos: {
     title: 'Gestor de archivos',
-    subtitle: 'Explora la estructura de carpetas y previsualiza archivos del proyecto React o de la máquina VPS.',
+    subtitle: 'Explora la estructura de carpetas y edita archivos del proyecto React o inspecciona rutas del VPS.',
   },
   sistema: {
     title: 'Correo empresarial y sistema',
@@ -121,10 +140,17 @@ const MODULE_TITLES = {
 }
 
 function AdminPage() {
+  const [authState, setAuthState] = useState('checking')
+  const [currentUser, setCurrentUser] = useState(null)
+  const [permissions, setPermissions] = useState(null)
+
   const [activeModule, setActiveModule] = useState('escritorio')
   const [overview, setOverview] = useState(null)
   const [apiError, setApiError] = useState('')
   const [selectedRequestId, setSelectedRequestId] = useState(null)
+  const [openCreateProject, setOpenCreateProject] = useState(false)
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   const refreshOverview = useCallback(async () => {
     try {
@@ -132,22 +158,63 @@ function AdminPage() {
       setOverview(data)
       setApiError('')
     } catch (error) {
+      if (error.status === 401) {
+        setAuthState('unauthenticated')
+        setCurrentUser(null)
+        setPermissions(null)
+        setOverview(null)
+        return
+      }
       setApiError(error.message)
     }
   }, [])
 
+  const syncAuthAndOverview = useCallback(async () => {
+    try {
+      const session = await adminApi.getSession()
+      if (session?.authenticated) {
+        setCurrentUser(session.user)
+        setPermissions(session.permissions)
+        setAuthState('authenticated')
+      }
+    } catch (error) {
+      if (error.status === 401) {
+        setAuthState('unauthenticated')
+        setCurrentUser(null)
+        setPermissions(null)
+        setOverview(null)
+        return
+      }
+    }
+    await refreshOverview()
+  }, [refreshOverview])
+
   useEffect(() => {
     let active = true
     adminApi
-      .getOverview()
-      .then((data) => {
+      .getSession()
+      .then((session) => {
         if (!active) return
-        setOverview(data)
+        setCurrentUser(session.user)
+        setPermissions(session.permissions)
+        setAuthState('authenticated')
         setApiError('')
+        return adminApi.getOverview().then((ov) => {
+          if (active) setOverview(ov)
+        })
       })
       .catch((error) => {
-        if (active) setApiError(error.message)
+        if (!active) return
+        setAuthState('unauthenticated')
+        setCurrentUser(null)
+        setPermissions(null)
+        if (error.status !== 401) {
+          setApiError(error.message)
+        } else {
+          setApiError('')
+        }
       })
+
     return () => {
       active = false
     }
@@ -177,12 +244,65 @@ function AdminPage() {
     }
   }, [])
 
+  const handleLoginSuccess = (data) => {
+    setCurrentUser(data.user)
+    setPermissions(data.permissions)
+    setAuthState('authenticated')
+    setApiError('')
+    setActiveModule('escritorio')
+    refreshOverview()
+  }
+
+  const handleConfirmLogout = async () => {
+    setLoggingOut(true)
+    try {
+      await adminApi.logout()
+    } catch {
+      // Limpia el estado local incluso si la red falló.
+    } finally {
+      setLoggingOut(false)
+      setLogoutConfirmOpen(false)
+      setAuthState('unauthenticated')
+      setCurrentUser(null)
+      setPermissions(null)
+      setOverview(null)
+      setSelectedRequestId(null)
+      setOpenCreateProject(false)
+    }
+  }
+
   const handleOpenRequestFromOverview = (id) => {
     setSelectedRequestId(id)
     setActiveModule('solicitudes')
   }
 
-  const headerInfo = MODULE_TITLES[activeModule] || MODULE_TITLES.escritorio
+  if (authState === 'checking') {
+    return (
+      <div className="admin-login-shell">
+        <div className="admin-login-card admin-login-card--compact">
+          <p className="admin-empty" style={{ textAlign: 'center' }}>
+            Verificando sesión administrativa...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (authState !== 'authenticated') {
+    return <AdminLoginScreen apiError={apiError} onSuccess={handleLoginSuccess} />
+  }
+
+  const allowedModules = permissions?.modules || []
+  const resolvedModule = allowedModules.includes(activeModule)
+    ? activeModule
+    : allowedModules[0] || 'escritorio'
+
+  const visibleMenuGroups = MENU_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => allowedModules.includes(item.id)),
+  })).filter((group) => group.items.length > 0)
+
+  const headerInfo = MODULE_TITLES[resolvedModule] || MODULE_TITLES.escritorio
   const unreadCount = overview?.solicitudes?.nueva || 0
   const publishedCount = overview?.proyectos?.publicados || 0
   const usersCount = overview?.usuarios?.total || 0
@@ -212,7 +332,7 @@ function AdminPage() {
         </div>
 
         <nav className="admin-nav">
-          {MENU_GROUPS.map((group) => (
+          {visibleMenuGroups.map((group) => (
             <div className="admin-nav-group" key={group.title}>
               <p className="admin-nav-heading">{group.title}</p>
               {group.items.map((mod) => {
@@ -221,7 +341,7 @@ function AdminPage() {
                   <button
                     key={mod.id}
                     type="button"
-                    className={`admin-nav-btn${activeModule === mod.id ? ' is-active' : ''}`}
+                    className={`admin-nav-btn${resolvedModule === mod.id ? ' is-active' : ''}`}
                     onClick={() => setActiveModule(mod.id)}
                   >
                     <span className="admin-nav-label">
@@ -237,9 +357,28 @@ function AdminPage() {
         </nav>
 
         <div className="admin-sidebar-foot">
-          <p className="admin-security-note">
-            Acceso sin login (entorno local). Los usuarios creados ya guardan contraseña cifrada para activar acceso privado.
-          </p>
+          {currentUser ? (
+            <div className="admin-sidebar-user">
+              <div className="admin-user-avatar" aria-hidden="true">
+                {getInitials(currentUser.nombre)}
+              </div>
+              <div className="admin-sidebar-user-meta">
+                <strong>{currentUser.nombre}</strong>
+                <span>
+                  @{currentUser.username} · {ROLE_LABELS[currentUser.rol] || currentUser.rol}
+                </span>
+              </div>
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            className="admin-logout-btn"
+            onClick={() => setLogoutConfirmOpen(true)}
+          >
+            Cerrar sesión
+          </button>
+
           <Link className="admin-back-link" to="/">
             ← Volver al sitio público
           </Link>
@@ -301,18 +440,39 @@ function AdminPage() {
           </div>
         ) : null}
 
+        {currentUser?.is_default_password ? (
+          <div className="admin-banner admin-banner--warning" role="status">
+            <span>
+              Estás usando la contraseña inicial por defecto. Cámbiala desde{' '}
+              <strong>Usuarios → {currentUser.username} → Editar</strong> para asegurar la cuenta.
+            </span>
+            {allowedModules.includes('usuarios') && resolvedModule !== 'usuarios' ? (
+              <button
+                type="button"
+                className="admin-btn admin-btn--secondary"
+                onClick={() => setActiveModule('usuarios')}
+              >
+                Cambiar clave
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="admin-workspace">
-          {activeModule === 'escritorio' ? (
+          {resolvedModule === 'escritorio' ? (
             <AdminOverview
               overview={overview}
               onNavigate={setActiveModule}
               onSelectRequest={handleOpenRequestFromOverview}
-              onNewProject={() => setActiveModule('proyectos')}
+              onNewProject={() => {
+                setOpenCreateProject(true)
+                setActiveModule('proyectos')
+              }}
               onRefreshOverview={refreshOverview}
             />
           ) : null}
 
-          {activeModule === 'solicitudes' ? (
+          {resolvedModule === 'solicitudes' ? (
             <AdminRequestsModule
               initialSelectedId={selectedRequestId}
               onClearInitialSelection={() => setSelectedRequestId(null)}
@@ -320,19 +480,75 @@ function AdminPage() {
             />
           ) : null}
 
-          {activeModule === 'proyectos' ? (
-            <AdminProjectsModule onDataChanged={refreshOverview} />
+          {resolvedModule === 'proyectos' ? (
+            <AdminProjectsModule
+              initialOpenCreate={openCreateProject}
+              onConsumeInitialCreate={() => setOpenCreateProject(false)}
+              onDataChanged={refreshOverview}
+            />
           ) : null}
 
-          {activeModule === 'usuarios' ? (
-            <AdminUsersModule onDataChanged={refreshOverview} />
+          {resolvedModule === 'usuarios' ? (
+            <AdminUsersModule onDataChanged={syncAuthAndOverview} />
           ) : null}
 
-          {activeModule === 'archivos' ? <AdminFilesModule /> : null}
+          {resolvedModule === 'archivos' ? <AdminFilesModule /> : null}
 
-          {activeModule === 'sistema' ? <AdminSmtpPanel overview={overview} /> : null}
+          {resolvedModule === 'sistema' ? <AdminSmtpPanel overview={overview} /> : null}
         </div>
       </main>
+
+      {logoutConfirmOpen ? (
+        <div
+          className="admin-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="logout-modal-title"
+        >
+          <div className="admin-modal admin-modal--compact">
+            <header className="admin-modal-header">
+              <div>
+                <h2 id="logout-modal-title">¿Cerrar sesión?</h2>
+                <p>Confirmación de salida del panel administrativo.</p>
+              </div>
+              <button
+                type="button"
+                className="admin-modal-close"
+                aria-label="Cancelar cierre de sesión"
+                onClick={() => setLogoutConfirmOpen(false)}
+                disabled={loggingOut}
+              >
+                ✕
+              </button>
+            </header>
+
+            <div className="admin-modal-body">
+              <p className="admin-empty" style={{ color: 'var(--color-ink)' }}>
+                Se cerrará tu sesión actual (<strong>@{currentUser?.username}</strong>) y deberás volver a ingresar tus credenciales para entrar al panel.
+              </p>
+            </div>
+
+            <footer className="admin-modal-footer">
+              <button
+                type="button"
+                className="admin-btn admin-btn--ghost"
+                onClick={() => setLogoutConfirmOpen(false)}
+                disabled={loggingOut}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="admin-btn admin-btn--danger"
+                onClick={handleConfirmLogout}
+                disabled={loggingOut}
+              >
+                {loggingOut ? 'Cerrando...' : 'Sí, cerrar sesión'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

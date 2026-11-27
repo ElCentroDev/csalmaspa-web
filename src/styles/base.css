@@ -175,6 +175,25 @@ button, a { -webkit-tap-highlight-color: transparent; }
   color: var(--color-white) !important;
 }
 
+.site-nav .nav-admin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #f1f0eb !important;
+  font-weight: 700;
+  border-radius: 2px;
+  white-space: nowrap;
+  transition: all 0.25s ease;
+}
+.site-nav .nav-admin-btn:hover, .site-nav .nav-admin-btn:focus-visible {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #17191a !important;
+}
+
 .nav-toggle {
   display: none;
   flex-direction: column;

@@ -5,6 +5,7 @@ async function requestJson(url, options = {}) {
   }
 
   const response = await fetch(url, {
+    credentials: 'same-origin',
     ...options,
     headers,
   })
@@ -30,6 +31,23 @@ async function requestJson(url, options = {}) {
 }
 
 export const adminApi = {
+  getSession() {
+    return requestJson('/api/auth/me')
+  },
+
+  login({ identifier, password }) {
+    return requestJson('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ identifier, password }),
+    })
+  },
+
+  logout() {
+    return requestJson('/api/auth/logout', {
+      method: 'POST',
+    })
+  },
+
   getOverview() {
     return requestJson('/api/admin/overview')
   },
