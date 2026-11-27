@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+const CONTACT_FORM_ENABLED = false
+
 function useReveal() {
   const ref = useRef(null)
   useEffect(() => {
@@ -45,6 +47,8 @@ function ContactSection() {
   async function handleSubmit(e) {
     e.preventDefault()
     setErrorMessage('')
+
+    if (!CONTACT_FORM_ENABLED) return
 
     // Validación básica en cliente
     if (!formData.nombre.trim() || !formData.email.trim() || !formData.telefono.trim() || !formData.detalle.trim()) {
@@ -359,10 +363,12 @@ function ContactSection() {
                 <button
                   type="submit"
                   className="btn-submit"
-                  disabled={status === 'loading'}
-                  style={{ opacity: status === 'loading' ? 0.7 : 1, cursor: status === 'loading' ? 'wait' : 'pointer' }}
+                  disabled={!CONTACT_FORM_ENABLED || status === 'loading'}
+                  style={{ opacity: !CONTACT_FORM_ENABLED || status === 'loading' ? 0.55 : 1, cursor: !CONTACT_FORM_ENABLED ? 'not-allowed' : status === 'loading' ? 'wait' : 'pointer' }}
                 >
-                  {status === 'loading' ? (
+                  {!CONTACT_FORM_ENABLED ? (
+                    'Envío temporalmente deshabilitado'
+                  ) : status === 'loading' ? (
                     'Enviando solicitud cifrada...'
                   ) : (
                     <>
@@ -373,6 +379,11 @@ function ContactSection() {
                     </>
                   )}
                 </button>
+                {!CONTACT_FORM_ENABLED && (
+                  <p className="contact-form-notice" role="status">
+                    El canal de contacto estará disponible próximamente. Por ahora no podemos recibir solicitudes por este formulario.
+                  </p>
+                )}
               </form>
             )}
           </div>
