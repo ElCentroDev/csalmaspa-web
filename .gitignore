@@ -31,3 +31,6 @@ dist-ssr
 !.env.example
 public/api/config.smtp.php
 .env.test.local
+
+# Runtime data (SQLite & uploads)
+data/

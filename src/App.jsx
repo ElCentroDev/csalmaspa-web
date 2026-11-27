@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage.jsx'
 const AboutPage = lazy(() => import('./pages/AboutPage.jsx'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage.jsx'))
+const AdminPage = lazy(() => import('./pages/AdminPage.jsx'))
 
 function ScrollManager() {
   const { pathname, hash } = useLocation()
@@ -31,6 +32,7 @@ function App() {
       <ScrollManager />
       <Suspense fallback={null}>
         <Routes>
+          <Route path="admin/*" element={<AdminPage />} />
           <Route element={<MainLayout />}>
             <Route index element={<HomePage />} />
             <Route path="quienes-somos" element={<AboutPage />} />

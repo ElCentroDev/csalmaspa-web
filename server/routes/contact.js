@@ -1,3 +1,5 @@
+import crypto from 'node:crypto'
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const phonePattern = /^\+56\s?9(?:\s?\d){8}$/
 
@@ -19,7 +21,15 @@ const contactSchema = {
   },
 }
 
-export default async function contactRoutes(fastify, { config, mailService }) {
+function hashIp(ip, salt) {
+  return crypto
+    .createHash('sha256')
+    .update(`${salt}:${ip || ''}`)
+    .digest('hex')
+    .slice(0, 32)
+}
+
+export default async function contactRoutes(fastify, { config, mailService, requestsRepo, activityRepo }) {
   fastify.post('/api/contact', { schema: contactSchema }, async (request, reply) => {
     const data = Object.fromEntries(
       Object.entries(request.body).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value]),
@@ -34,21 +44,36 @@ export default async function contactRoutes(fastify, { config, mailService }) {
       return reply.code(422).send({ success: false, error: 'Ingrese un correo electrónico válido.' })
     }
     if (!phonePattern.test(data.telefono)) {
-      return reply.code(422).send({ success: false, error: 'Ingrese un teléfono móvil chileno en formato +56 9 XXXX XXXX.' })
+      return reply.code(422).send({ success: false, error: 'Ingrese el formato correcto (+56 9 XXXX XXXX).' })
+    }
+
+    const ipHash = hashIp(request.ip, config.privacy.ipHashSalt)
+    const id = requestsRepo.create({ ...data, ipHash })
+
+    if (activityRepo) {
+      activityRepo.record({
+        modulo: 'solicitudes',
+        accion: 'nueva_solicitud',
+        descripcion: `Nueva solicitud de ${data.nombre}${data.especialidad ? ` (${data.especialidad})` : ''}.`,
+        actor: 'Formulario Web',
+      })
     }
 
     const recipient = config.recipients.default
     if (!recipient?.length) {
       request.log.error('No hay destinatario configurado para el formulario de contacto')
-      return reply.code(503).send({ success: false, error: 'El servicio de contacto no está disponible.' })
+      requestsRepo.setNoticeState(id, 'error')
+      return { success: true, id }
     }
 
     try {
       await mailService.sendContact({ recipient, data })
-      return { success: true }
+      requestsRepo.setNoticeState(id, config.mailTransport === 'smtp' ? 'enviado' : 'simulado')
     } catch (error) {
       request.log.error({ err: error }, 'No se pudo enviar el correo de contacto')
-      return reply.code(500).send({ success: false, error: 'No se pudo enviar la solicitud. Intente más tarde.' })
+      requestsRepo.setNoticeState(id, 'error')
     }
+
+    return { success: true, id }
   })
 }

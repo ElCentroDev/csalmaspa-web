@@ -2,6 +2,7 @@ import HeroSection from '../sections/HeroSection.jsx'
 import AboutSection from '../sections/AboutSection.jsx'
 import ServicesSection from '../sections/ServicesSection.jsx'
 import ProjectsSection from '../sections/ProjectsSection.jsx'
+import PublishedProjectsSection from '../sections/PublishedProjectsSection.jsx'
 import ProcessSection from '../sections/ProcessSection.jsx'
 import PillarsSection from '../sections/PillarsSection.jsx'
 import ContactSection from '../sections/ContactSection.jsx'
@@ -28,6 +29,7 @@ function HomePage() {
       <AboutSection />
       <ServicesSection />
       <ProjectsSection />
+      <PublishedProjectsSection />
       <ProcessSection />
       <PillarsSection />
       <ContactSection />

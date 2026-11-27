@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-const CONTACT_FORM_ENABLED = false
+const CONTACT_FORM_ENABLED =
+  import.meta.env.VITE_CONTACT_FORM_ENABLED === 'true' || import.meta.env.DEV
 
 function useReveal() {
   const ref = useRef(null)
@@ -293,7 +294,7 @@ function ContactSection() {
                       className="form-input"
                       placeholder="+56 9 XXXX XXXX"
                       pattern="\+56\s?9(\s?\d){8}"
-                      title="Use el formato +56 9 XXXX XXXX"
+                      title="Ingrese el formato correcto (+56 9 XXXX XXXX)"
                       maxLength={30}
                       autoComplete="tel"
                       value={formData.telefono}
